@@ -44,6 +44,49 @@
       font-size: 14px;
     }
 
+    .stage {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 148px;
+      gap: 12px;
+      align-items: start;
+    }
+
+    #inventory {
+      border: 2px solid #0d160f;
+      border-radius: 8px;
+      background: #1c2a1e;
+      min-height: 180px;
+      padding: 12px;
+    }
+
+    #inventory h2 {
+      margin: 0 0 10px;
+      font-size: 16px;
+    }
+
+    #inventory-empty {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    #inventory-item {
+      display: grid;
+      justify-items: center;
+      gap: 6px;
+      font-size: 14px;
+    }
+
+    #inventory-item[hidden] {
+      display: none;
+    }
+
+    #sword-icon {
+      width: 100px;
+      height: 56px;
+      image-rendering: pixelated;
+    }
+
     canvas {
       display: block;
       width: 100%;
@@ -59,8 +102,18 @@
 <body>
   <main>
     <h1>Arrogance</h1>
-    <p>마우스 좌클릭으로 이동합니다. 이동 방향에 맞춰 LPC 걷기 애니메이션이 재생되고, 상태는 콘솔에 출력됩니다.</p>
-    <canvas id="game" width="960" height="640" aria-label="초록 풀밭 위의 탑뷰 캐릭터"></canvas>
+    <p>좌클릭으로 이동하고, 보물상자를 클릭하면 놋쇠검이 떨어집니다. 떨어진 검을 더블클릭하면 인벤토리에 들어갑니다.</p>
+    <div class="stage">
+      <canvas id="game" width="960" height="640" aria-label="초록 풀밭 위의 탑뷰 캐릭터와 보물상자"></canvas>
+      <section id="inventory" aria-label="인벤토리">
+        <h2>인벤토리</h2>
+        <p id="inventory-empty">비어 있음</p>
+        <div id="inventory-item" hidden>
+          <canvas id="sword-icon" width="100" height="56" aria-hidden="true"></canvas>
+          <span>놋쇠검</span>
+        </div>
+      </section>
+    </div>
   </main>
 
   <script>
@@ -80,6 +133,16 @@
     const FOOT_OFFSET_X = 32
     const FOOT_OFFSET_Y = 58
     const DIRECTION_LABEL = { up: '위', left: '왼쪽', down: '아래', right: '오른쪽' }
+    const CLICK_DELAY = 220
+
+    // 필드 위 보물상자. 좌표는 상자 중심이다.
+    const CHEST = { x: 300, y: 190, width: 72, height: 52 }
+
+    // 걷기 아래 방향 첫 칸에 있는 놋쇠검만 잘라 바닥 아이템으로 쓴다.
+    const SWORD_URL = 'src/item/weapon/Sword_brass.png'
+    const SWORD_SOURCE = { x: 25, y: 686, width: 20, height: 11 }
+    const SWORD_SCALE = 5
+    const SWORD_NAME = '놋쇠검'
 
     // 화면 좌표를 캔버스 내부 좌표로 바꾼다.
     const toCanvasPoint = (canvas, event) => {
@@ -112,6 +175,16 @@
         }
       }
     }
+
+    const swordDrawSize = () => ({
+      width: SWORD_SOURCE.width * SWORD_SCALE,
+      height: SWORD_SOURCE.height * SWORD_SCALE,
+    })
+
+    const containsPoint = (point, centerX, centerY, width, height) => (
+      Math.abs(point.x - centerX) <= width / 2
+      && Math.abs(point.y - centerY) <= height / 2
+    )
 
     // 이동량이 큰 축을 LPC 4방향 중 하나로 고른다.
     const directionFromDelta = (dx, dy) => {
@@ -150,6 +223,65 @@
         size,
         size,
       )
+    }
+
+    // 닫힌 상자는 뚜껑이 덮여 있고, 열리면 안쪽과 젖혀진 뚜껑을 보여 준다.
+    const drawChest = (ctx, chest) => {
+      const left = chest.x - chest.width / 2
+      const top = chest.y - chest.height / 2
+
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.28)'
+      ctx.beginPath()
+      ctx.ellipse(chest.x, top + chest.height - 4, 30, 8, 0, 0, Math.PI * 2)
+      ctx.fill()
+
+      ctx.fillStyle = '#8a5a2b'
+      ctx.fillRect(left, top + 20, chest.width, chest.height - 20)
+      ctx.fillStyle = '#d4b06a'
+      ctx.fillRect(left, top + 28, chest.width, 5)
+      ctx.fillRect(left, top + chest.height - 10, chest.width, 5)
+      ctx.fillStyle = '#f0d48a'
+      ctx.fillRect(chest.x - 5, top + 34, 10, 10)
+
+      if (!chest.open) {
+        ctx.fillStyle = '#6b4424'
+        ctx.fillRect(left, top, chest.width, 24)
+        ctx.fillStyle = '#d4b06a'
+        ctx.fillRect(left, top + 10, chest.width, 4)
+        return
+      }
+
+      ctx.fillStyle = '#2a2118'
+      ctx.fillRect(left + 6, top + 24, chest.width - 12, 16)
+      ctx.fillStyle = '#6b4424'
+      ctx.beginPath()
+      ctx.moveTo(left, top + 20)
+      ctx.lineTo(left + 10, top - 6)
+      ctx.lineTo(left + chest.width - 10, top - 6)
+      ctx.lineTo(left + chest.width, top + 20)
+      ctx.fill()
+      ctx.fillStyle = '#d4b06a'
+      ctx.fillRect(left + 10, top + 2, chest.width - 20, 4)
+    }
+
+    const drawDroppedSword = (ctx, image, item) => {
+      const size = swordDrawSize()
+      ctx.imageSmoothingEnabled = false
+      ctx.drawImage(
+        image,
+        SWORD_SOURCE.x,
+        SWORD_SOURCE.y,
+        SWORD_SOURCE.width,
+        SWORD_SOURCE.height,
+        item.x - size.width / 2,
+        item.y - size.height / 2,
+        size.width,
+        size.height,
+      )
+      ctx.fillStyle = '#f4efe2'
+      ctx.font = '14px sans-serif'
+      ctx.textAlign = 'center'
+      ctx.fillText(SWORD_NAME, item.x, item.y + size.height / 2 + 16)
     }
 
     const startGame = () => {
@@ -198,6 +330,69 @@
         })
         sprite.src = SPRITE_URL
 
+        const chest = { ...CHEST, open: false }
+        let droppedSword = null
+        let swordReady = false
+        const inventory = []
+        let clickTimer = null
+
+        const swordImage = new Image()
+        swordImage.addEventListener('load', () => {
+          try {
+            const minWidth = SWORD_SOURCE.x + SWORD_SOURCE.width
+            const minHeight = SWORD_SOURCE.y + SWORD_SOURCE.height
+            if (swordImage.naturalWidth < minWidth || swordImage.naturalHeight < minHeight) {
+              throw new Error('놋쇠검 이미지가 자를 영역보다 작습니다.')
+            }
+            swordReady = true
+            console.log(`[상태] 놋쇠검 로드 | ${swordImage.naturalWidth}x${swordImage.naturalHeight}`)
+          } catch (error) {
+            console.error('놋쇠검 검증 실패', error)
+          }
+        })
+        swordImage.addEventListener('error', () => {
+          console.error('놋쇠검 이미지 로드 실패', SWORD_URL)
+        })
+        swordImage.src = SWORD_URL
+
+        const emptyLabel = document.getElementById('inventory-empty')
+        const inventoryItem = document.getElementById('inventory-item')
+        const swordIcon = document.getElementById('sword-icon')
+
+        // 인벤토리에 넣은 놋쇠검을 칸 안에 다시 그린다.
+        const renderInventory = () => {
+          try {
+            const hasSword = inventory.some((item) => item.name === SWORD_NAME)
+            if (!(emptyLabel instanceof HTMLElement) || !(inventoryItem instanceof HTMLElement)) {
+              throw new Error('인벤토리 요소를 찾을 수 없습니다.')
+            }
+            emptyLabel.hidden = hasSword
+            inventoryItem.hidden = !hasSword
+            if (!hasSword || !(swordIcon instanceof HTMLCanvasElement)) {
+              return
+            }
+            const iconCtx = swordIcon.getContext('2d')
+            if (!iconCtx) {
+              throw new Error('인벤토리 칸을 그릴 수 없습니다.')
+            }
+            iconCtx.clearRect(0, 0, swordIcon.width, swordIcon.height)
+            iconCtx.imageSmoothingEnabled = false
+            iconCtx.drawImage(
+              swordImage,
+              SWORD_SOURCE.x,
+              SWORD_SOURCE.y,
+              SWORD_SOURCE.width,
+              SWORD_SOURCE.height,
+              0,
+              0,
+              swordIcon.width,
+              swordIcon.height,
+            )
+          } catch (error) {
+            console.error('인벤토리 표시 실패', error)
+          }
+        }
+
         // 위치, 방향, 걷기 프레임, 이동 여부를 콘솔에 남긴다.
         const printStatus = (label) => {
           console.log(
@@ -244,13 +439,84 @@
 
         const draw = () => {
           drawGrass(ctx, canvas.width, canvas.height)
+          drawChest(ctx, chest)
+          if (droppedSword && swordReady) {
+            drawDroppedSword(ctx, swordImage, droppedSword)
+          }
           if (!spriteReady) {
             ctx.fillStyle = '#e8f0e4'
             ctx.font = '16px sans-serif'
+            ctx.textAlign = 'left'
             ctx.fillText(spriteFailed ? '캐릭터 이미지를 불러오지 못했습니다.' : '캐릭터 이미지를 불러오는 중...', 24, 36)
             return
           }
           drawActor(ctx, sprite, player, target, moving)
+        }
+
+        const hitChest = (point) => containsPoint(point, chest.x, chest.y, chest.width, chest.height)
+
+        const hitDroppedSword = (point) => {
+          if (!droppedSword) {
+            return false
+          }
+          const size = swordDrawSize()
+          return containsPoint(point, droppedSword.x, droppedSword.y, size.width + 16, size.height + 28)
+        }
+
+        // 상자를 열면 놋쇠검을 상자 앞 바닥에 한 번만 떨어뜨린다.
+        const openChest = () => {
+          try {
+            if (chest.open) {
+              console.log('[상태] 이미 열린 보물상자')
+              return
+            }
+            if (!swordReady) {
+              throw new Error('놋쇠검 이미지를 아직 불러오지 못했습니다.')
+            }
+            const size = swordDrawSize()
+            chest.open = true
+            droppedSword = {
+              x: chest.x,
+              y: chest.y + chest.height / 2 + size.height / 2 + 18,
+              name: SWORD_NAME,
+            }
+            console.log(`[상태] 보물상자 오픈 | ${SWORD_NAME}이 바닥에 떨어졌습니다.`)
+          } catch (error) {
+            console.error('보물상자 처리 실패', error)
+          }
+        }
+
+        const storeSword = () => {
+          try {
+            if (!droppedSword) {
+              return
+            }
+            inventory.push({ name: droppedSword.name })
+            droppedSword = null
+            renderInventory()
+            console.log(`[상태] 인벤토리 저장 | ${SWORD_NAME} | 보유: ${inventory.length}`)
+          } catch (error) {
+            console.error('인벤토리 저장 실패', error)
+          }
+        }
+
+        const beginMove = (point) => {
+          const halfWidth = FOOT_OFFSET_X * SPRITE_SCALE
+          const topMargin = FOOT_OFFSET_Y * SPRITE_SCALE
+          const bottomMargin = (FRAME_SIZE - FOOT_OFFSET_Y) * SPRITE_SCALE
+          target.x = clamp(point.x, halfWidth, canvas.width - halfWidth)
+          target.y = clamp(point.y, topMargin, canvas.height - bottomMargin)
+
+          const distance = Math.hypot(target.x - player.x, target.y - player.y)
+          if (distance <= ARRIVE_DISTANCE) {
+            stopWalking()
+            printStatus('이미 그 위치')
+            return
+          }
+
+          player.direction = directionFromDelta(target.x - player.x, target.y - player.y)
+          moving = true
+          printStatus('이동 시작')
         }
 
         canvas.addEventListener('click', (event) => {
@@ -260,24 +526,40 @@
             }
 
             const point = toCanvasPoint(canvas, event)
-            const halfWidth = FOOT_OFFSET_X * SPRITE_SCALE
-            const topMargin = FOOT_OFFSET_Y * SPRITE_SCALE
-            const bottomMargin = (FRAME_SIZE - FOOT_OFFSET_Y) * SPRITE_SCALE
-            target.x = clamp(point.x, halfWidth, canvas.width - halfWidth)
-            target.y = clamp(point.y, topMargin, canvas.height - bottomMargin)
-
-            const distance = Math.hypot(target.x - player.x, target.y - player.y)
-            if (distance <= ARRIVE_DISTANCE) {
-              stopWalking()
-              printStatus('이미 그 위치')
+            if (hitChest(point)) {
+              clearTimeout(clickTimer)
+              openChest()
               return
             }
 
-            player.direction = directionFromDelta(target.x - player.x, target.y - player.y)
-            moving = true
-            printStatus('이동 시작')
+            clearTimeout(clickTimer)
+            clickTimer = setTimeout(() => {
+              try {
+                beginMove(point)
+              } catch (error) {
+                console.error('이동 처리 실패', error)
+              }
+            }, CLICK_DELAY)
           } catch (error) {
-            console.error('이동 처리 실패', error)
+            console.error('클릭 처리 실패', error)
+          }
+        })
+
+        canvas.addEventListener('dblclick', (event) => {
+          try {
+            clearTimeout(clickTimer)
+            const point = toCanvasPoint(canvas, event)
+            if (hitDroppedSword(point)) {
+              storeSword()
+              return
+            }
+            if (hitChest(point)) {
+              openChest()
+              return
+            }
+            beginMove(point)
+          } catch (error) {
+            console.error('더블클릭 처리 실패', error)
           }
         })
 
