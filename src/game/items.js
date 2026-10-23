@@ -1,3 +1,5 @@
+import { BRASS_SWORD_ATK } from './stats/constants.js'
+
 // 보물상자 크기와, 플레이어가 손을 뻗을 수 있는 거리. 좌표는 상자 중심이다.
 const CHEST_WIDTH = 72
 const CHEST_HEIGHT = 52
@@ -94,6 +96,7 @@ export const createFieldItems = (canvas, position) => {
   let swordReady = false
   let equipped = false
   const inventory = []
+  const equipListeners = []
 
   const swordImage = new Image()
   swordImage.addEventListener('load', () => {
@@ -190,6 +193,7 @@ export const createFieldItems = (canvas, position) => {
       }
       equipped = !equipped
       renderInventory()
+      equipListeners.forEach((listener) => listener())
       console.log(`[상태] ${equipped ? '장착' : '장착 해제'} | ${SWORD_NAME}`)
     } catch (error) {
       console.error('장착 처리 실패', error)
@@ -267,6 +271,11 @@ export const createFieldItems = (canvas, position) => {
     captureFloor,
     applyFloor,
     getEquippedWeapon: () => (equipped && swordReady ? swordImage : null),
+    getEquippedAttack: () => (equipped ? BRASS_SWORD_ATK : 0),
+    getEquippedDefense: () => 0,
+    onEquipChange: (listener) => {
+      equipListeners.push(listener)
+    },
     hitChest: (point) => containsPoint(point, chest.x, chest.y, chest.width, chest.height),
     isChestInReach: (playerPoint) => Math.hypot(playerPoint.x - chest.x, playerPoint.y - chest.y) <= CHEST_REACH,
     hitDroppedSword: (point) => {

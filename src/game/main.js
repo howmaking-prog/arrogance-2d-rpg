@@ -1,9 +1,11 @@
-import { drawTowerFloor } from './floor.js?v=8'
-import { createHud } from './hud.js?v=8'
-import { createFieldItems } from './items.js?v=8'
-import { createGoblin } from './monster.js?v=8'
-import { createPlayer, toCanvasPoint } from './player.js?v=8'
-import { STAIR_REACH, drawStairs, stairAtPoint, stairSpots } from './stairs.js?v=8'
+import { createStatProgression } from './stats/progression.js?v=9'
+import { createStatSheet } from './stats/statSheet.js?v=9'
+import { drawTowerFloor } from './floor.js?v=9'
+import { createHud } from './hud.js?v=9'
+import { createFieldItems } from './items.js?v=9'
+import { createGoblin } from './monster.js?v=9'
+import { createPlayer, toCanvasPoint } from './player.js?v=9'
+import { STAIR_REACH, drawStairs, stairAtPoint, stairSpots } from './stairs.js?v=9'
 
 const CLICK_DELAY = 220
 const FIELD_MARGIN_X = 96
@@ -92,6 +94,12 @@ const startGame = () => {
     const goblinSpot = randomFieldPoint(canvas, [actor.getPosition(), chestSpot, ...opening])
     const items = createFieldItems(canvas, chestSpot)
     const goblin = createGoblin(canvas, goblinSpot)
+    const progression = createStatProgression()
+    const statSheet = createStatSheet(progression, () => ({
+      weaponAtk: items.getEquippedAttack(),
+      armorDef: items.getEquippedDefense(),
+    }))
+    items.onEquipChange(() => statSheet.refresh())
     let clickTimer = null
     let lastTime = 0
     let pointer = null
@@ -156,6 +164,17 @@ const startGame = () => {
       items.keepInside()
       goblin.keepInside()
       actor.placeAt(here)
+      if (direction === 'up') {
+        try {
+          const gained = progression.reachFloor(floor)
+          if (gained.granted > 0) {
+            console.log(`[상태] 스탯 포인트 +${gained.granted} | 남은 ${gained.unspent}`)
+          }
+        } catch (error) {
+          console.error('층 스탯 보상 실패', error)
+        }
+      }
+      statSheet.refresh()
       showFloor()
     }
 

@@ -167,6 +167,70 @@
       pointer-events: none;
     }
 
+    #info {
+      width: min(420px, calc(100% - 32px));
+      max-height: calc(100% - 120px);
+      overflow: auto;
+    }
+
+    .stat-points,
+    .stat-note {
+      margin-bottom: 10px;
+    }
+
+    .stat-note {
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .class-row,
+    .stat-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .class-row {
+      justify-content: flex-start;
+      flex-wrap: wrap;
+    }
+
+    .stat-row button,
+    .class-row button {
+      border: 2px solid #6a5a42;
+      border-radius: 6px;
+      background: rgba(22, 18, 14, 0.92);
+      color: var(--ink);
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .stat-row button {
+      width: 28px;
+      margin: 0 6px;
+    }
+
+    .class-row button {
+      padding: 4px 8px;
+    }
+
+    .stat-row button:disabled {
+      opacity: 0.4;
+      cursor: default;
+    }
+
+    .class-row button[aria-pressed="true"] {
+      border-color: #e6c36a;
+      color: #f3dd9a;
+    }
+
+    .derived-list p + p {
+      margin-top: 4px;
+    }
+
     #game {
       position: absolute;
       inset: 0;
@@ -218,7 +282,7 @@
         <h2>정보</h2>
         <button type="button" data-close="info">닫기</button>
       </div>
-      <p>오만의 탑. 계단으로 위층과 아래층을 오갑니다.</p>
+      <div id="stat-sheet">오만의 탑. 계단으로 위층과 아래층을 오갑니다.</div>
     </section>
     <section id="leaderboard" class="game-window" hidden aria-label="리더보드">
       <div class="window-bar">
@@ -243,7 +307,7 @@
     </section>
   </main>
 
-  <script type="module" src="src/game/main.js?v=8"></script>
+  <script type="module" src="src/game/main.js?v=9"></script>
 
 </body>
 </html>
