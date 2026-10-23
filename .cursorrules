@@ -1,0 +1,58 @@
+# Arrogance 2D RPG
+
+이 프로젝트는 HTML5 Canvas와 Vanilla JavaScript로 작성되는 2D 탑뷰 RPG 게임입니다. 코드는 모듈화해서 작성해 주세요.
+
+사용자에게는 한국어로 답하고, 코드 주석도 한글로 단다.
+
+## 코드 스타일
+- Vanilla JavaScript를 사용한다. 프레임워크와 TypeScript는 쓰지 않는다.
+- 함수는 화살표 함수(`=>`)로 작성한다.
+- 파일은 ES 모듈(`import` / `export`)로 나눈다. 한 파일에는 한 역할만 둔다.
+- 저장, 불러오기, 입력 검증처럼 실패할 수 있는 경계는 try-catch로 처리한다. 빈 catch는 두지 않는다.
+- 테스트는 Jest로 작성한다.
+- 피해량, 이동 속도, 경험치 공식 같은 매직 넘버는 이름이 있는 상수로 뺀다.
+
+## 배포
+- 파일을 수정하면 확인을 묻지 않고 GitHub 저장소 howmaking-prog/arrogance-2d-rpg 의 main에 같은 내용을 올린다.
+- 공개 페이지 https://howmaking-prog.github.io/arrogance-2d-rpg/ 가 로컬과 같게 갱신됐는지 확인한다.
+
+## 구조
+- Canvas 렌더, 입력, 맵, 전투, 인벤토리, 대사는 각각 별도 모듈로 둔다.
+- 스탯, 아이템, 맵, 대사는 데이터로 두고, 전투·이동·인벤토리 로직과 분리한다.
+- 화면 렌더와 게임 규칙(상태 변경)을 한 함수에 섞지 않는다.
+- 탑뷰 좌표와 타일 크기는 공통 상수로 맞춘다.
+- 기존 데이터 형태는 깨지 않고 확장한다.
+- 이미 동작하는 코드는 요청 없이 삭제하거나 이전 동작으로 되돌리지 않는다.
+
+## 예시
+
+```javascript
+// 나쁜 예: 한 파일에 렌더와 규칙을 섞고, 매직 넘버를 그대로 둔다
+function gainExp(player, amount) {
+  player.exp += amount
+  if (player.exp > 100) player.level += 1
+  ctx.fillText(player.level, 10, 10)
+}
+
+// 좋은 예: 규칙은 모듈로 분리하고, Canvas 출력은 호출하는 쪽에서 담당한다
+export const EXP_PER_LEVEL = 100
+
+// 경험치를 반영하고, 레벨업 조건을 넘으면 레벨을 올린다.
+export const gainExp = (player, amount) => {
+  try {
+    if (amount < 0) {
+      throw new Error('경험치는 0 이상이어야 합니다.')
+    }
+    const exp = player.exp + amount
+    const leveledUp = exp >= EXP_PER_LEVEL
+    return {
+      ...player,
+      exp: leveledUp ? exp - EXP_PER_LEVEL : exp,
+      level: leveledUp ? player.level + 1 : player.level,
+    }
+  } catch (error) {
+    console.error('경험치 반영 실패', error)
+    return player
+  }
+}
+```

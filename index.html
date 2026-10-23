@@ -52,23 +52,34 @@
       border-radius: 8px;
       cursor: crosshair;
       background: #2f8f38;
+      image-rendering: pixelated;
     }
   </style>
 </head>
 <body>
   <main>
     <h1>Arrogance</h1>
-    <p>마우스 좌클릭으로 캐릭터가 이동합니다. 상태는 브라우저 콘솔에 출력됩니다.</p>
+    <p>마우스 좌클릭으로 이동합니다. 이동 방향에 맞춰 LPC 걷기 애니메이션이 재생되고, 상태는 콘솔에 출력됩니다.</p>
     <canvas id="game" width="960" height="640" aria-label="초록 풀밭 위의 탑뷰 캐릭터"></canvas>
   </main>
 
   <script>
     // 풀밭 타일, 이동 속도, 도착 판정 거리
     const TILE_SIZE = 40
-    const MOVE_SPEED = 180
+    const MOVE_SPEED = 150
     const ARRIVE_DISTANCE = 3
-    const EDGE_MARGIN = 18
     const GRASS_COLORS = ['#3caf45', '#349a3c', '#45b84c', '#2f8f38']
+
+    // LPC 표준 칸 크기. 걷기 9프레임은 위, 왼쪽, 아래, 오른쪽 순으로 8~11행에 있다.
+    const FRAME_SIZE = 64
+    const SPRITE_SCALE = 2
+    const WALK_FRAMES = 9
+    const WALK_ROWS = { up: 8, left: 9, down: 10, right: 11 }
+    const STEP_DISTANCE = 14
+    const SPRITE_URL = 'src/character/player.png'
+    const FOOT_OFFSET_X = 32
+    const FOOT_OFFSET_Y = 58
+    const DIRECTION_LABEL = { up: '위', left: '왼쪽', down: '아래', right: '오른쪽' }
 
     // 화면 좌표를 캔버스 내부 좌표로 바꾼다.
     const toCanvasPoint = (canvas, event) => {
@@ -102,8 +113,16 @@
       }
     }
 
-    // 탑뷰 캐릭터와 클릭한 목적지를 그린다.
-    const drawActor = (ctx, player, target, moving, facing, now) => {
+    // 이동량이 큰 축을 LPC 4방향 중 하나로 고른다.
+    const directionFromDelta = (dx, dy) => {
+      if (Math.abs(dx) > Math.abs(dy)) {
+        return dx < 0 ? 'left' : 'right'
+      }
+      return dy < 0 ? 'up' : 'down'
+    }
+
+    // 클릭 지점과 LPC 스프라이트의 현재 걷기 프레임을 그린다.
+    const drawActor = (ctx, sprite, player, target, moving) => {
       if (moving) {
         ctx.strokeStyle = 'rgba(255, 248, 214, 0.85)'
         ctx.lineWidth = 2
@@ -112,34 +131,25 @@
         ctx.stroke()
       }
 
-      const bob = moving ? Math.sin(now / 80) * 2 : 0
-      ctx.save()
-      ctx.translate(player.x, player.y + bob)
-
       ctx.fillStyle = 'rgba(0, 0, 0, 0.28)'
       ctx.beginPath()
-      ctx.ellipse(0, 16, 14, 6, 0, 0, Math.PI * 2)
+      ctx.ellipse(player.x, player.y, 16, 6, 0, 0, Math.PI * 2)
       ctx.fill()
 
-      ctx.fillStyle = '#24508f'
-      ctx.beginPath()
-      ctx.ellipse(0, 4, 11, 13, 0, 0, Math.PI * 2)
-      ctx.fill()
-
-      ctx.fillStyle = '#f2d2b0'
-      ctx.beginPath()
-      ctx.arc(0, -12, 8, 0, Math.PI * 2)
-      ctx.fill()
-
-      ctx.strokeStyle = '#f4efe2'
-      ctx.lineWidth = 3
-      ctx.lineCap = 'round'
-      ctx.beginPath()
-      ctx.moveTo(0, -12)
-      ctx.lineTo(Math.cos(facing) * 16, -12 + Math.sin(facing) * 16)
-      ctx.stroke()
-
-      ctx.restore()
+      const row = WALK_ROWS[player.direction]
+      const size = FRAME_SIZE * SPRITE_SCALE
+      ctx.imageSmoothingEnabled = false
+      ctx.drawImage(
+        sprite,
+        player.frame * FRAME_SIZE,
+        row * FRAME_SIZE,
+        FRAME_SIZE,
+        FRAME_SIZE,
+        player.x - FOOT_OFFSET_X * SPRITE_SCALE,
+        player.y - FOOT_OFFSET_Y * SPRITE_SCALE,
+        size,
+        size,
+      )
     }
 
     const startGame = () => {
@@ -154,17 +164,51 @@
           throw new Error('2D 컨텍스트를 만들 수 없습니다.')
         }
 
-        const player = { x: canvas.width / 2, y: canvas.height / 2 }
+        const player = {
+          x: canvas.width / 2,
+          y: canvas.height / 2,
+          direction: 'down',
+          frame: 0,
+          stepCarry: 0,
+        }
         const target = { x: player.x, y: player.y }
         let moving = false
-        let facing = Math.PI / 2
         let lastTime = 0
+        let spriteReady = false
+        let spriteFailed = false
 
-        // 위치, 목적지, 이동 여부를 콘솔에 남긴다.
+        const sprite = new Image()
+        sprite.addEventListener('load', () => {
+          try {
+            const minWidth = FRAME_SIZE * WALK_FRAMES
+            const minHeight = FRAME_SIZE * (WALK_ROWS.right + 1)
+            if (sprite.naturalWidth < minWidth || sprite.naturalHeight < minHeight) {
+              throw new Error('LPC 스프라이트 크기가 걷기 동작보다 작습니다.')
+            }
+            spriteReady = true
+            console.log(`[상태] 스프라이트 로드 | ${sprite.naturalWidth}x${sprite.naturalHeight}`)
+          } catch (error) {
+            spriteFailed = true
+            console.error('스프라이트 검증 실패', error)
+          }
+        })
+        sprite.addEventListener('error', () => {
+          spriteFailed = true
+          console.error('캐릭터 스프라이트 로드 실패', SPRITE_URL)
+        })
+        sprite.src = SPRITE_URL
+
+        // 위치, 방향, 걷기 프레임, 이동 여부를 콘솔에 남긴다.
         const printStatus = (label) => {
           console.log(
-            `[상태] ${label} | 위치 (${Math.round(player.x)}, ${Math.round(player.y)}) | 목적지 (${Math.round(target.x)}, ${Math.round(target.y)}) | 이동중: ${moving}`
+            `[상태] ${label} | 위치 (${Math.round(player.x)}, ${Math.round(player.y)}) | 목적지 (${Math.round(target.x)}, ${Math.round(target.y)}) | 방향: ${DIRECTION_LABEL[player.direction]} | 프레임: ${player.frame} | 이동중: ${moving}`
           )
+        }
+
+        const stopWalking = () => {
+          moving = false
+          player.frame = 0
+          player.stepCarry = 0
         }
 
         const update = (dt) => {
@@ -179,20 +223,34 @@
           if (distance <= ARRIVE_DISTANCE) {
             player.x = target.x
             player.y = target.y
-            moving = false
+            stopWalking()
             printStatus('도착')
             return
           }
 
-          facing = Math.atan2(dy, dx)
+          player.direction = directionFromDelta(dx, dy)
           const step = Math.min(MOVE_SPEED * dt, distance)
           player.x += (dx / distance) * step
           player.y += (dy / distance) * step
+
+          // 이동 거리에 맞춰 걷기 프레임을 넘겨, 발걸음과 속도가 어긋나지 않게 한다.
+          player.stepCarry += step
+          const advances = Math.floor(player.stepCarry / STEP_DISTANCE)
+          if (advances > 0) {
+            player.frame = (player.frame + advances) % WALK_FRAMES
+            player.stepCarry -= advances * STEP_DISTANCE
+          }
         }
 
-        const draw = (now) => {
+        const draw = () => {
           drawGrass(ctx, canvas.width, canvas.height)
-          drawActor(ctx, player, target, moving, facing, now)
+          if (!spriteReady) {
+            ctx.fillStyle = '#e8f0e4'
+            ctx.font = '16px sans-serif'
+            ctx.fillText(spriteFailed ? '캐릭터 이미지를 불러오지 못했습니다.' : '캐릭터 이미지를 불러오는 중...', 24, 36)
+            return
+          }
+          drawActor(ctx, sprite, player, target, moving)
         }
 
         canvas.addEventListener('click', (event) => {
@@ -202,18 +260,21 @@
             }
 
             const point = toCanvasPoint(canvas, event)
-            target.x = clamp(point.x, EDGE_MARGIN, canvas.width - EDGE_MARGIN)
-            target.y = clamp(point.y, EDGE_MARGIN, canvas.height - EDGE_MARGIN)
+            const halfWidth = FOOT_OFFSET_X * SPRITE_SCALE
+            const topMargin = FOOT_OFFSET_Y * SPRITE_SCALE
+            const bottomMargin = (FRAME_SIZE - FOOT_OFFSET_Y) * SPRITE_SCALE
+            target.x = clamp(point.x, halfWidth, canvas.width - halfWidth)
+            target.y = clamp(point.y, topMargin, canvas.height - bottomMargin)
 
             const distance = Math.hypot(target.x - player.x, target.y - player.y)
             if (distance <= ARRIVE_DISTANCE) {
-              moving = false
+              stopWalking()
               printStatus('이미 그 위치')
               return
             }
 
+            player.direction = directionFromDelta(target.x - player.x, target.y - player.y)
             moving = true
-            facing = Math.atan2(target.y - player.y, target.x - player.x)
             printStatus('이동 시작')
           } catch (error) {
             console.error('이동 처리 실패', error)
@@ -225,7 +286,7 @@
             const dt = lastTime === 0 ? 0 : Math.min((now - lastTime) / 1000, 0.05)
             lastTime = now
             update(dt)
-            draw(now)
+            draw()
           } catch (error) {
             console.error('프레임 처리 실패', error)
           }
