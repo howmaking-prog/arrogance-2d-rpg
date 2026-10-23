@@ -7,28 +7,40 @@
   <style>
     :root {
       color-scheme: dark;
-      --ink: #e8f0e4;
-      --muted: #b7c7b2;
-      --panel: #142016;
+      --ink: #f0e6d4;
+      --muted: #cbbba6;
+      --panel: #120f0c;
     }
 
     * {
       box-sizing: border-box;
     }
 
+    html,
     body {
       margin: 0;
-      min-height: 100vh;
-      display: grid;
-      place-items: center;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
       background: var(--panel);
       color: var(--ink);
       font-family: "Segoe UI", sans-serif;
     }
 
     main {
-      width: min(960px, 100%);
-      padding: 24px 16px 32px;
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+
+    header {
+      position: absolute;
+      top: 16px;
+      left: 20px;
+      z-index: 2;
+      max-width: min(640px, calc(100% - 200px));
+      pointer-events: none;
+      text-shadow: 0 2px 8px #000;
     }
 
     h1 {
@@ -39,23 +51,21 @@
     }
 
     p {
-      margin: 0 0 14px;
+      margin: 0;
       color: var(--muted);
       font-size: 14px;
     }
 
-    .stage {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) 148px;
-      gap: 12px;
-      align-items: start;
-    }
-
     #inventory {
-      border: 2px solid #0d160f;
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      z-index: 2;
+      width: 148px;
+      border: 2px solid #3a3228;
       border-radius: 8px;
-      background: #1c2a1e;
-      min-height: 180px;
+      background: rgba(22, 18, 14, 0.9);
+      min-height: 160px;
       padding: 12px;
     }
 
@@ -87,41 +97,43 @@
       image-rendering: pixelated;
     }
 
-    canvas {
+    #game {
+      position: absolute;
+      inset: 0;
       display: block;
       width: 100%;
-      height: auto;
-      border: 2px solid #0d160f;
-      border-radius: 8px;
+      height: 100%;
+      border: 0;
+      border-radius: 0;
       cursor: crosshair;
-      background: #2f8f38;
+      background: #2a241e;
       image-rendering: pixelated;
     }
   </style>
 </head>
 <body>
   <main>
-    <h1>Arrogance</h1>
-    <p>좌클릭으로 이동하고, 보물상자를 클릭하면 놋쇠검이 떨어집니다. 떨어진 검을 더블클릭하면 인벤토리에 들어갑니다.</p>
-    <div class="stage">
-      <canvas id="game" width="960" height="640" aria-label="초록 풀밭 위의 탑뷰 캐릭터와 보물상자"></canvas>
-      <section id="inventory" aria-label="인벤토리">
-        <h2>인벤토리</h2>
-        <p id="inventory-empty">비어 있음</p>
-        <div id="inventory-item" hidden>
-          <canvas id="sword-icon" width="100" height="56" aria-hidden="true"></canvas>
-          <span>놋쇠검</span>
-        </div>
-      </section>
-    </div>
+    <canvas id="game" aria-label="낡은 탑 1층 바닥 위의 탑뷰 캐릭터와 보물상자"></canvas>
+    <header>
+      <h1>Arrogance</h1>
+      <p>탑 1층. 좌클릭으로 이동하고, 보물상자를 클릭하면 놋쇠검이 떨어집니다. 떨어진 검을 더블클릭하면 인벤토리에 들어갑니다.</p>
+    </header>
+    <section id="inventory" aria-label="인벤토리">
+      <h2>인벤토리</h2>
+      <p id="inventory-empty">비어 있음</p>
+      <div id="inventory-item" hidden>
+        <canvas id="sword-icon" width="100" height="56" aria-hidden="true"></canvas>
+        <span>놋쇠검</span>
+      </div>
+    </section>
   </main>
 
   <script>
-    // 풀밭 타일, 이동 속도, 도착 판정 거리
-    const TILE_SIZE = 40
+    // 낡은 석판 크기, 이동 속도, 도착 판정 거리
+    const TILE_SIZE = 64
     const MOVE_SPEED = 150
     const ARRIVE_DISTANCE = 3
-    const GRASS_COLORS = ['#3caf45', '#349a3c', '#45b84c', '#2f8f38']
+    const STONE_COLORS = ['#3c342c', '#4a3f34', '#322c27', '#55483c', '#3a312b']
 
     // LPC 표준 칸 크기. 걷기 9프레임은 위, 왼쪽, 아래, 오른쪽 순으로 8~11행에 있다.
     const FRAME_SIZE = 64
@@ -155,25 +167,61 @@
 
     const clamp = (value, min, max) => Math.min(max, Math.max(min, value))
 
-    // 칸마다 색이 다른 초록 풀밭을 그린다.
-    const drawGrass = (ctx, width, height) => {
+    // 타일 좌표로 늘 같은 흠집 패턴이 나오게 한다.
+    const tileHash = (column, row) => {
+      let value = column * 374761393 + row * 668265263
+      value = (value ^ (value >> 13)) * 1274126177
+      return (value ^ (value >> 16)) >>> 0
+    }
+
+    // 브라우저 크기만큼 낡은 탑 1층 석판 바닥을 깐다.
+    const drawTowerFloor = (ctx, width, height) => {
+      ctx.fillStyle = '#16130f'
+      ctx.fillRect(0, 0, width, height)
+
       for (let y = 0; y < height; y += TILE_SIZE) {
         for (let x = 0; x < width; x += TILE_SIZE) {
-          const column = x / TILE_SIZE
-          const row = y / TILE_SIZE
-          ctx.fillStyle = GRASS_COLORS[(column * 3 + row * 7) % GRASS_COLORS.length]
-          ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE)
+          const column = Math.floor(x / TILE_SIZE)
+          const row = Math.floor(y / TILE_SIZE)
+          const tone = tileHash(column, row)
+          const gap = 3
+          ctx.fillStyle = STONE_COLORS[tone % STONE_COLORS.length]
+          ctx.fillRect(x + gap, y + gap, TILE_SIZE - gap * 2, TILE_SIZE - gap * 2)
 
-          ctx.strokeStyle = 'rgba(18, 72, 22, 0.35)'
-          ctx.lineWidth = 1
-          ctx.beginPath()
-          ctx.moveTo(x + 10, y + 30)
-          ctx.lineTo(x + 12, y + 18)
-          ctx.moveTo(x + 26, y + 32)
-          ctx.lineTo(x + 28, y + 20)
-          ctx.stroke()
+          ctx.fillStyle = 'rgba(112, 88, 62, 0.28)'
+          ctx.fillRect(x + gap, y + gap, TILE_SIZE - gap * 2, 3)
+
+          if (tone % 5 === 0) {
+            ctx.strokeStyle = 'rgba(14, 11, 9, 0.75)'
+            ctx.lineWidth = 1
+            ctx.beginPath()
+            ctx.moveTo(x + 14, y + 20)
+            ctx.lineTo(x + 30, y + 42)
+            ctx.lineTo(x + 48, y + 34)
+            ctx.stroke()
+          }
+
+          if (tone % 7 === 0) {
+            ctx.fillStyle = 'rgba(18, 14, 11, 0.4)'
+            ctx.beginPath()
+            ctx.ellipse(x + 42, y + 30, 9, 5, 0, 0, Math.PI * 2)
+            ctx.fill()
+          }
         }
       }
+
+      const shade = ctx.createRadialGradient(
+        width / 2,
+        height / 2,
+        Math.min(width, height) * 0.15,
+        width / 2,
+        height / 2,
+        Math.max(width, height) * 0.72,
+      )
+      shade.addColorStop(0, 'rgba(0, 0, 0, 0)')
+      shade.addColorStop(1, 'rgba(8, 6, 5, 0.5)')
+      ctx.fillStyle = shade
+      ctx.fillRect(0, 0, width, height)
     }
 
     const swordDrawSize = () => ({
@@ -295,6 +343,20 @@
         if (!ctx) {
           throw new Error('2D 컨텍스트를 만들 수 없습니다.')
         }
+
+        // 캔버스 해상도를 브라우저 영역에 맞춰 맵을 늘린다.
+        const fitCanvas = () => {
+          const width = Math.max(480, Math.floor(canvas.clientWidth))
+          const height = Math.max(320, Math.floor(canvas.clientHeight))
+          if (canvas.width === width && canvas.height === height) {
+            return false
+          }
+          canvas.width = width
+          canvas.height = height
+          return true
+        }
+
+        fitCanvas()
 
         const player = {
           x: canvas.width / 2,
@@ -438,7 +500,7 @@
         }
 
         const draw = () => {
-          drawGrass(ctx, canvas.width, canvas.height)
+          drawTowerFloor(ctx, canvas.width, canvas.height)
           drawChest(ctx, chest)
           if (droppedSword && swordReady) {
             drawDroppedSword(ctx, swordImage, droppedSword)
@@ -574,6 +636,27 @@
           }
           requestAnimationFrame(loop)
         }
+
+        const keepInside = (point) => {
+          point.x = clamp(point.x, 48, Math.max(48, canvas.width - 48))
+          point.y = clamp(point.y, 72, Math.max(72, canvas.height - 48))
+        }
+
+        window.addEventListener('resize', () => {
+          try {
+            if (!fitCanvas()) {
+              return
+            }
+            keepInside(player)
+            keepInside(target)
+            keepInside(chest)
+            if (droppedSword) {
+              keepInside(droppedSword)
+            }
+          } catch (error) {
+            console.error('화면 크기 조정 실패', error)
+          }
+        })
 
         printStatus('게임 시작')
         requestAnimationFrame(loop)
