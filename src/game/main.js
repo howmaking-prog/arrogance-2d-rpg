@@ -1,9 +1,37 @@
-import { drawTowerFloor } from './floor.js?v=4'
-import { createFieldItems } from './items.js?v=4'
-import { createGoblin } from './monster.js?v=4'
-import { createPlayer, toCanvasPoint } from './player.js?v=4'
+import { drawTowerFloor } from './floor.js?v=5'
+import { createFieldItems } from './items.js?v=5'
+import { createGoblin } from './monster.js?v=5'
+import { createPlayer, toCanvasPoint } from './player.js?v=5'
 
 const CLICK_DELAY = 220
+const FIELD_MARGIN_X = 96
+const FIELD_MARGIN_TOP = 140
+const FIELD_MARGIN_BOTTOM = 96
+const SPAWN_GAP = 180
+
+// 플레이어와 다른 배치 지점에서 떨어진 필드 좌표를 고른다.
+const randomFieldPoint = (canvas, blocked) => {
+  const minX = FIELD_MARGIN_X
+  const maxX = Math.max(minX + 1, canvas.width - FIELD_MARGIN_X)
+  const minY = FIELD_MARGIN_TOP
+  const maxY = Math.max(minY + 1, canvas.height - FIELD_MARGIN_BOTTOM)
+
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    const point = {
+      x: minX + Math.random() * (maxX - minX),
+      y: minY + Math.random() * (maxY - minY),
+    }
+    const separated = blocked.every((other) => Math.hypot(point.x - other.x, point.y - other.y) >= SPAWN_GAP)
+    if (separated) {
+      return point
+    }
+  }
+
+  return {
+    x: minX,
+    y: minY,
+  }
+}
 
 const startGame = () => {
   try {
@@ -32,10 +60,20 @@ const startGame = () => {
     fitCanvas()
 
     const actor = createPlayer(canvas)
-    const items = createFieldItems(canvas)
-    const goblin = createGoblin(canvas)
+    const playerStart = actor.getPosition()
+    const chestSpot = randomFieldPoint(canvas, [playerStart])
+    const goblinSpot = randomFieldPoint(canvas, [playerStart, chestSpot])
+    const items = createFieldItems(canvas, chestSpot)
+    const goblin = createGoblin(canvas, goblinSpot)
     let clickTimer = null
     let lastTime = 0
+    let pointer = null
+
+    const canOpenChest = (point) => items.hitChest(point) && items.isChestInReach(actor.getPosition())
+
+    const refreshCursor = () => {
+      canvas.style.cursor = pointer && canOpenChest(pointer) ? 'pointer' : 'crosshair'
+    }
 
     const draw = () => {
       drawTowerFloor(ctx, canvas.width, canvas.height)
@@ -51,6 +89,20 @@ const startGame = () => {
       actor.draw(ctx, items.getEquippedWeapon())
     }
 
+    canvas.addEventListener('mousemove', (event) => {
+      try {
+        pointer = toCanvasPoint(canvas, event)
+        refreshCursor()
+      } catch (error) {
+        console.error('커서 처리 실패', error)
+      }
+    })
+
+    canvas.addEventListener('mouseleave', () => {
+      pointer = null
+      canvas.style.cursor = 'crosshair'
+    })
+
     canvas.addEventListener('click', (event) => {
       try {
         if (event.button !== 0) {
@@ -58,13 +110,11 @@ const startGame = () => {
         }
 
         const point = toCanvasPoint(canvas, event)
-        if (items.hitChest(point)) {
-          clearTimeout(clickTimer)
-          items.openChest()
+        clearTimeout(clickTimer)
+        if (canOpenChest(point)) {
           return
         }
 
-        clearTimeout(clickTimer)
         clickTimer = setTimeout(() => {
           try {
             actor.beginMove(point)
@@ -85,7 +135,7 @@ const startGame = () => {
           items.storeSword()
           return
         }
-        if (items.hitChest(point)) {
+        if (canOpenChest(point)) {
           items.openChest()
           return
         }
@@ -100,6 +150,7 @@ const startGame = () => {
         const dt = lastTime === 0 ? 0 : Math.min((now - lastTime) / 1000, 0.05)
         lastTime = now
         actor.update(dt)
+        refreshCursor()
         draw()
       } catch (error) {
         console.error('프레임 처리 실패', error)

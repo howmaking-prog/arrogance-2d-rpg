@@ -1,5 +1,7 @@
-// 필드 위 보물상자. 좌표는 상자 중심이다.
-const CHEST = { x: 300, y: 190, width: 72, height: 52 }
+// 보물상자 크기와, 플레이어가 손을 뻗을 수 있는 거리. 좌표는 상자 중심이다.
+const CHEST_WIDTH = 72
+const CHEST_HEIGHT = 52
+const CHEST_REACH = 120
 
 // 걷기 아래 방향 첫 칸에 있는 놋쇠검만 잘라 바닥 아이템으로 쓴다.
 const SWORD_URL = 'src/item/weapon/Sword_brass.png'
@@ -79,8 +81,15 @@ const drawDroppedSword = (ctx, image, item) => {
 }
 
 // 보물상자, 바닥의 놋쇠검, 인벤토리 표시를 한곳에서 다룬다.
-export const createFieldItems = (canvas) => {
-  const chest = { ...CHEST, open: false }
+export const createFieldItems = (canvas, position) => {
+  const chest = {
+    x: position.x,
+    y: position.y,
+    width: CHEST_WIDTH,
+    height: CHEST_HEIGHT,
+    open: false,
+  }
+  console.log(`[상태] 보물상자 배치 | 위치 (${Math.round(chest.x)}, ${Math.round(chest.y)})`)
   let droppedSword = null
   let swordReady = false
   let equipped = false
@@ -237,6 +246,7 @@ export const createFieldItems = (canvas) => {
     keepInside,
     getEquippedWeapon: () => (equipped && swordReady ? swordImage : null),
     hitChest: (point) => containsPoint(point, chest.x, chest.y, chest.width, chest.height),
+    isChestInReach: (playerPoint) => Math.hypot(playerPoint.x - chest.x, playerPoint.y - chest.y) <= CHEST_REACH,
     hitDroppedSword: (point) => {
       if (!droppedSword) {
         return false

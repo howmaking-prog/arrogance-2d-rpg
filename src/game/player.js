@@ -4,7 +4,7 @@ const SPRITE_SCALE = 2
 const WALK_FRAMES = 9
 const WALK_ROWS = { up: 8, left: 9, down: 10, right: 11 }
 const STEP_DISTANCE = 14
-const SPRITE_URL = 'src/character/player.png'
+const SPRITE_URL = 'src/character/player.png?v=5'
 const FOOT_OFFSET_X = 32
 const FOOT_OFFSET_Y = 58
 const MOVE_SPEED = 150
@@ -191,6 +191,7 @@ export const createPlayer = (canvas) => {
     printStatus,
     isReady: () => spriteReady,
     hasFailed: () => spriteFailed,
+    getPosition: () => ({ x: player.x, y: player.y }),
     draw: (ctx, weaponImage) => drawActor(ctx, sprite, player, target, moving, weaponImage),
   }
 }

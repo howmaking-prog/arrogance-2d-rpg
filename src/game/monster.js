@@ -8,10 +8,10 @@ const FOOT_OFFSET_Y = 58
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value))
 
 // 고블린은 LPC 걷기 칸의 정면 대기 프레임으로 필드에 세운다.
-export const createGoblin = (canvas) => {
+export const createGoblin = (canvas, position) => {
   const goblin = {
-    x: Math.min(canvas.width - 90, Math.round(canvas.width * 0.7)),
-    y: Math.round(canvas.height * 0.38),
+    x: position.x,
+    y: position.y,
   }
   let ready = false
 
