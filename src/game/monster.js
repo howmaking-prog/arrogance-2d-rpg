@@ -33,6 +33,12 @@ export const createGoblin = (canvas, position) => {
   image.src = GOBLIN_URL
 
   return {
+    place: (position) => {
+      goblin.x = position.x
+      goblin.y = position.y
+      console.log(`[상태] 고블린 출현 | 위치 (${Math.round(goblin.x)}, ${Math.round(goblin.y)})`)
+    },
+    capture: () => ({ x: goblin.x, y: goblin.y }),
     keepInside: () => {
       goblin.x = clamp(goblin.x, 48, Math.max(48, canvas.width - 48))
       goblin.y = clamp(goblin.y, 72, Math.max(72, canvas.height - 48))

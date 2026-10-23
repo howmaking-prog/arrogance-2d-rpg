@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Arrogance — 2D 탑뷰 RPG</title>
+  <title>오만의 탑</title>
   <style>
     :root {
       color-scheme: dark;
@@ -58,7 +58,7 @@
 
     #inventory {
       position: absolute;
-      top: 16px;
+      top: 196px;
       right: 16px;
       z-index: 2;
       width: 148px;
@@ -120,10 +120,10 @@
 </head>
 <body>
   <main>
-    <canvas id="game" aria-label="낡은 탑 1층 바닥 위의 탑뷰 캐릭터와 보물상자"></canvas>
+    <canvas id="game" aria-label="오만의 탑 1층"></canvas>
     <header>
-      <h1>Arrogance</h1>
-      <p>탑 1층. 좌클릭으로 이동하고, 보물상자에 가까이 가 커서가 손 모양일 때 더블클릭하면 놋쇠검이 떨어집니다. 떨어진 검은 더블클릭으로 줍고, 인벤토리에서 다시 더블클릭하면 장착합니다.</p>
+      <h1 id="floor-title">오만의 탑 1층</h1>
+      <p>좌클릭으로 이동한다. 보물상자, 계단, 떨어진 검은 가까이 가서 커서가 손 모양일 때 더블클릭한다. 인벤토리의 검은 더블클릭으로 장착한다.</p>
     </header>
     <section id="inventory" aria-label="인벤토리">
       <h2>인벤토리</h2>
@@ -135,7 +135,7 @@
     </section>
   </main>
 
-  <script type="module" src="src/game/main.js?v=5"></script>
+  <script type="module" src="src/game/main.js?v=7"></script>
 
 </body>
 </html>

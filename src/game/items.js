@@ -240,10 +240,32 @@ export const createFieldItems = (canvas, position) => {
     droppedSword.y = clamp(droppedSword.y, 72, Math.max(72, canvas.height - 48))
   }
 
+  const captureFloor = () => ({
+    x: chest.x,
+    y: chest.y,
+    open: chest.open,
+    droppedSword: droppedSword ? { ...droppedSword } : null,
+  })
+
+  // 층을 옮길 때 그 층의 상자와 떨어진 검을 되돌린다. 인벤토리는 유지한다.
+  const applyFloor = (state) => {
+    try {
+      chest.x = state.x
+      chest.y = state.y
+      chest.open = Boolean(state.open)
+      droppedSword = state.droppedSword ? { ...state.droppedSword } : null
+      console.log(`[상태] 보물상자 배치 | 위치 (${Math.round(chest.x)}, ${Math.round(chest.y)})`)
+    } catch (error) {
+      console.error('층 보물상자 복원 실패', error)
+    }
+  }
+
   return {
     openChest,
     storeSword,
     keepInside,
+    captureFloor,
+    applyFloor,
     getEquippedWeapon: () => (equipped && swordReady ? swordImage : null),
     hitChest: (point) => containsPoint(point, chest.x, chest.y, chest.width, chest.height),
     isChestInReach: (playerPoint) => Math.hypot(playerPoint.x - chest.x, playerPoint.y - chest.y) <= CHEST_REACH,

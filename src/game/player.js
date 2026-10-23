@@ -192,6 +192,16 @@ export const createPlayer = (canvas) => {
     isReady: () => spriteReady,
     hasFailed: () => spriteFailed,
     getPosition: () => ({ x: player.x, y: player.y }),
+    placeAt: (point) => {
+      const halfWidth = FOOT_OFFSET_X * SPRITE_SCALE
+      const topMargin = FOOT_OFFSET_Y * SPRITE_SCALE
+      const bottomMargin = (FRAME_SIZE - FOOT_OFFSET_Y) * SPRITE_SCALE
+      player.x = clamp(point.x, halfWidth, canvas.width - halfWidth)
+      player.y = clamp(point.y, topMargin, canvas.height - bottomMargin)
+      target.x = player.x
+      target.y = player.y
+      stopWalking()
+    },
     draw: (ctx, weaponImage) => drawActor(ctx, sprite, player, target, moving, weaponImage),
   }
 }

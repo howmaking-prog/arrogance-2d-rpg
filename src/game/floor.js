@@ -2,15 +2,18 @@
 const TILE_SIZE = 64
 const STONE_COLORS = ['#3c342c', '#4a3f34', '#322c27', '#55483c', '#3a312b']
 
-// 타일 좌표로 늘 같은 흠집 패턴이 나오게 한다.
+const FLOOR_COLUMN_SHIFT = 17
+const FLOOR_ROW_SHIFT = 31
+
+// 타일 좌표와 층수로 그 층만의 흠집 패턴이 나오게 한다.
 const tileHash = (column, row) => {
   let value = column * 374761393 + row * 668265263
   value = (value ^ (value >> 13)) * 1274126177
   return (value ^ (value >> 16)) >>> 0
 }
 
-// 브라우저 크기만큼 낡은 탑 1층 석판 바닥을 깐다.
-export const drawTowerFloor = (ctx, width, height) => {
+// 브라우저 크기만큼 그 층의 낡은 석판 바닥을 깐다.
+export const drawTowerFloor = (ctx, width, height, floor) => {
   ctx.fillStyle = '#16130f'
   ctx.fillRect(0, 0, width, height)
 
@@ -18,7 +21,7 @@ export const drawTowerFloor = (ctx, width, height) => {
     for (let x = 0; x < width; x += TILE_SIZE) {
       const column = Math.floor(x / TILE_SIZE)
       const row = Math.floor(y / TILE_SIZE)
-      const tone = tileHash(column, row)
+      const tone = tileHash(column + floor * FLOOR_COLUMN_SHIFT, row + floor * FLOOR_ROW_SHIFT)
       const gap = 3
       ctx.fillStyle = STONE_COLORS[tone % STONE_COLORS.length]
       ctx.fillRect(x + gap, y + gap, TILE_SIZE - gap * 2, TILE_SIZE - gap * 2)

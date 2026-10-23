@@ -1,15 +1,17 @@
-import { drawTowerFloor } from './floor.js?v=5'
-import { createFieldItems } from './items.js?v=5'
-import { createGoblin } from './monster.js?v=5'
-import { createPlayer, toCanvasPoint } from './player.js?v=5'
+import { drawTowerFloor } from './floor.js?v=7'
+import { createFieldItems } from './items.js?v=7'
+import { createGoblin } from './monster.js?v=7'
+import { createPlayer, toCanvasPoint } from './player.js?v=7'
+import { STAIR_REACH, drawStairs, stairAtPoint, stairSpots } from './stairs.js?v=7'
 
 const CLICK_DELAY = 220
 const FIELD_MARGIN_X = 96
-const FIELD_MARGIN_TOP = 140
+const FIELD_MARGIN_TOP = 180
 const FIELD_MARGIN_BOTTOM = 96
 const SPAWN_GAP = 180
+const ARRIVAL_OFFSET = 140
 
-// 플레이어와 다른 배치 지점에서 떨어진 필드 좌표를 고른다.
+// 플레이어, 계단과 떨어진 필드 좌표를 고른다.
 const randomFieldPoint = (canvas, blocked) => {
   const minX = FIELD_MARGIN_X
   const maxX = Math.max(minX + 1, canvas.width - FIELD_MARGIN_X)
@@ -22,15 +24,32 @@ const randomFieldPoint = (canvas, blocked) => {
       y: minY + Math.random() * (maxY - minY),
     }
     const separated = blocked.every((other) => Math.hypot(point.x - other.x, point.y - other.y) >= SPAWN_GAP)
-    if (separated) {
+    const underInventory = point.x > canvas.width - 190 && point.y > 170 && point.y < 420
+    const underHeader = point.x < 360 && point.y < 170
+    if (separated && !underInventory && !underHeader) {
       return point
     }
   }
 
   return {
-    x: minX,
-    y: minY,
+    x: (minX + maxX) / 2,
+    y: (minY + maxY) / 2,
   }
+}
+
+// 올라온 층은 아래 계단 옆, 내려온 층은 위 계단 옆에 세운다.
+const arrivalPoint = (canvas, floor, via) => {
+  const spots = stairSpots(canvas, floor)
+  const up = spots.find((stair) => stair.direction === 'up')
+  const down = spots.find((stair) => stair.direction === 'down')
+
+  if (via === 'up' && down) {
+    return { x: down.x + ARRIVAL_OFFSET, y: down.y }
+  }
+  if (via === 'down' && up) {
+    return { x: up.x - ARRIVAL_OFFSET, y: up.y + 80 }
+  }
+  return { x: canvas.width / 2, y: canvas.height / 2 }
 }
 
 const startGame = () => {
@@ -44,6 +63,8 @@ const startGame = () => {
     if (!ctx) {
       throw new Error('2D 컨텍스트를 만들 수 없습니다.')
     }
+
+    const floorTitle = document.getElementById('floor-title')
 
     // 캔버스 해상도를 브라우저 영역에 맞춰 맵을 늘린다.
     const fitCanvas = () => {
@@ -59,24 +80,84 @@ const startGame = () => {
 
     fitCanvas()
 
+    let floor = 1
+    const floors = new Map()
     const actor = createPlayer(canvas)
-    const playerStart = actor.getPosition()
-    const chestSpot = randomFieldPoint(canvas, [playerStart])
-    const goblinSpot = randomFieldPoint(canvas, [playerStart, chestSpot])
+    const opening = stairSpots(canvas, floor)
+    const chestSpot = randomFieldPoint(canvas, [actor.getPosition(), ...opening])
+    const goblinSpot = randomFieldPoint(canvas, [actor.getPosition(), chestSpot, ...opening])
     const items = createFieldItems(canvas, chestSpot)
     const goblin = createGoblin(canvas, goblinSpot)
     let clickTimer = null
     let lastTime = 0
     let pointer = null
 
+    const showFloor = () => {
+      const label = `오만의 탑 ${floor}층`
+      if (floorTitle instanceof HTMLElement) {
+        floorTitle.textContent = label
+      }
+      canvas.setAttribute('aria-label', label)
+      console.log(`[상태] ${label}`)
+    }
+
+    const usableStair = (point) => {
+      const stair = stairAtPoint(stairSpots(canvas, floor), point)
+      if (!stair) {
+        return null
+      }
+      const playerPoint = actor.getPosition()
+      const distance = Math.hypot(playerPoint.x - stair.x, playerPoint.y - stair.y)
+      return distance <= STAIR_REACH ? stair : null
+    }
+
     const canOpenChest = (point) => items.hitChest(point) && items.isChestInReach(actor.getPosition())
 
     const refreshCursor = () => {
-      canvas.style.cursor = pointer && canOpenChest(pointer) ? 'pointer' : 'crosshair'
+      const interactive = Boolean(pointer && (canOpenChest(pointer) || usableStair(pointer)))
+      canvas.style.cursor = interactive ? 'pointer' : 'crosshair'
+    }
+
+    // 방문한 층은 그대로 두고, 처음 가는 층만 새로 배치한다.
+    const changeFloor = (direction) => {
+      const nextFloor = direction === 'up' ? floor + 1 : floor - 1
+      if (nextFloor < 1) {
+        return
+      }
+
+      floors.set(floor, {
+        items: items.captureFloor(),
+        goblin: goblin.capture(),
+      })
+      floor = nextFloor
+
+      const here = arrivalPoint(canvas, floor, direction)
+      const saved = floors.get(floor)
+      if (saved) {
+        items.applyFloor(saved.items)
+        goblin.place(saved.goblin)
+      } else {
+        const spots = stairSpots(canvas, floor)
+        const nextChest = randomFieldPoint(canvas, [here, ...spots])
+        const nextGoblin = randomFieldPoint(canvas, [here, nextChest, ...spots])
+        items.applyFloor({
+          x: nextChest.x,
+          y: nextChest.y,
+          open: false,
+          droppedSword: null,
+        })
+        goblin.place(nextGoblin)
+      }
+
+      items.keepInside()
+      goblin.keepInside()
+      actor.placeAt(here)
+      showFloor()
     }
 
     const draw = () => {
-      drawTowerFloor(ctx, canvas.width, canvas.height)
+      drawTowerFloor(ctx, canvas.width, canvas.height, floor)
+      drawStairs(ctx, stairSpots(canvas, floor))
       items.draw(ctx)
       goblin.draw(ctx)
       if (!actor.isReady()) {
@@ -111,7 +192,7 @@ const startGame = () => {
 
         const point = toCanvasPoint(canvas, event)
         clearTimeout(clickTimer)
-        if (canOpenChest(point)) {
+        if (canOpenChest(point) || usableStair(point)) {
           return
         }
 
@@ -137,6 +218,11 @@ const startGame = () => {
         }
         if (canOpenChest(point)) {
           items.openChest()
+          return
+        }
+        const stair = usableStair(point)
+        if (stair) {
+          changeFloor(stair.direction)
           return
         }
         actor.beginMove(point)
@@ -171,6 +257,7 @@ const startGame = () => {
       }
     })
 
+    showFloor()
     actor.printStatus('게임 시작')
     requestAnimationFrame(loop)
   } catch (error) {
