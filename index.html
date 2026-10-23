@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Arrogance — 2D 탑뷰 RPG</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #e8f0e4;
+      --muted: #b7c7b2;
+      --panel: #142016;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: var(--panel);
+      color: var(--ink);
+      font-family: "Segoe UI", sans-serif;
+    }
+
+    main {
+      width: min(960px, 100%);
+      padding: 24px 16px 32px;
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+
+    p {
+      margin: 0 0 14px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      border: 2px solid #0d160f;
+      border-radius: 8px;
+      cursor: crosshair;
+      background: #2f8f38;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Arrogance</h1>
+    <p>마우스 좌클릭으로 캐릭터가 이동합니다. 상태는 브라우저 콘솔에 출력됩니다.</p>
+    <canvas id="game" width="960" height="640" aria-label="초록 풀밭 위의 탑뷰 캐릭터"></canvas>
+  </main>
+
+  <script>
+    // 풀밭 타일, 이동 속도, 도착 판정 거리
+    const TILE_SIZE = 40
+    const MOVE_SPEED = 180
+    const ARRIVE_DISTANCE = 3
+    const EDGE_MARGIN = 18
+    const GRASS_COLORS = ['#3caf45', '#349a3c', '#45b84c', '#2f8f38']
+
+    // 화면 좌표를 캔버스 내부 좌표로 바꾼다.
+    const toCanvasPoint = (canvas, event) => {
+      const rect = canvas.getBoundingClientRect()
+      return {
+        x: (event.clientX - rect.left) * (canvas.width / rect.width),
+        y: (event.clientY - rect.top) * (canvas.height / rect.height),
+      }
+    }
+
+    const clamp = (value, min, max) => Math.min(max, Math.max(min, value))
+
+    // 칸마다 색이 다른 초록 풀밭을 그린다.
+    const drawGrass = (ctx, width, height) => {
+      for (let y = 0; y < height; y += TILE_SIZE) {
+        for (let x = 0; x < width; x += TILE_SIZE) {
+          const column = x / TILE_SIZE
+          const row = y / TILE_SIZE
+          ctx.fillStyle = GRASS_COLORS[(column * 3 + row * 7) % GRASS_COLORS.length]
+          ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE)
+
+          ctx.strokeStyle = 'rgba(18, 72, 22, 0.35)'
+          ctx.lineWidth = 1
+          ctx.beginPath()
+          ctx.moveTo(x + 10, y + 30)
+          ctx.lineTo(x + 12, y + 18)
+          ctx.moveTo(x + 26, y + 32)
+          ctx.lineTo(x + 28, y + 20)
+          ctx.stroke()
+        }
+      }
+    }
+
+    // 탑뷰 캐릭터와 클릭한 목적지를 그린다.
+    const drawActor = (ctx, player, target, moving, facing, now) => {
+      if (moving) {
+        ctx.strokeStyle = 'rgba(255, 248, 214, 0.85)'
+        ctx.lineWidth = 2
+        ctx.beginPath()
+        ctx.arc(target.x, target.y, 8, 0, Math.PI * 2)
+        ctx.stroke()
+      }
+
+      const bob = moving ? Math.sin(now / 80) * 2 : 0
+      ctx.save()
+      ctx.translate(player.x, player.y + bob)
+
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.28)'
+      ctx.beginPath()
+      ctx.ellipse(0, 16, 14, 6, 0, 0, Math.PI * 2)
+      ctx.fill()
+
+      ctx.fillStyle = '#24508f'
+      ctx.beginPath()
+      ctx.ellipse(0, 4, 11, 13, 0, 0, Math.PI * 2)
+      ctx.fill()
+
+      ctx.fillStyle = '#f2d2b0'
+      ctx.beginPath()
+      ctx.arc(0, -12, 8, 0, Math.PI * 2)
+      ctx.fill()
+
+      ctx.strokeStyle = '#f4efe2'
+      ctx.lineWidth = 3
+      ctx.lineCap = 'round'
+      ctx.beginPath()
+      ctx.moveTo(0, -12)
+      ctx.lineTo(Math.cos(facing) * 16, -12 + Math.sin(facing) * 16)
+      ctx.stroke()
+
+      ctx.restore()
+    }
+
+    const startGame = () => {
+      try {
+        const canvas = document.getElementById('game')
+        if (!(canvas instanceof HTMLCanvasElement)) {
+          throw new Error('캔버스를 찾을 수 없습니다.')
+        }
+
+        const ctx = canvas.getContext('2d')
+        if (!ctx) {
+          throw new Error('2D 컨텍스트를 만들 수 없습니다.')
+        }
+
+        const player = { x: canvas.width / 2, y: canvas.height / 2 }
+        const target = { x: player.x, y: player.y }
+        let moving = false
+        let facing = Math.PI / 2
+        let lastTime = 0
+
+        // 위치, 목적지, 이동 여부를 콘솔에 남긴다.
+        const printStatus = (label) => {
+          console.log(
+            `[상태] ${label} | 위치 (${Math.round(player.x)}, ${Math.round(player.y)}) | 목적지 (${Math.round(target.x)}, ${Math.round(target.y)}) | 이동중: ${moving}`
+          )
+        }
+
+        const update = (dt) => {
+          if (!moving) {
+            return
+          }
+
+          const dx = target.x - player.x
+          const dy = target.y - player.y
+          const distance = Math.hypot(dx, dy)
+
+          if (distance <= ARRIVE_DISTANCE) {
+            player.x = target.x
+            player.y = target.y
+            moving = false
+            printStatus('도착')
+            return
+          }
+
+          facing = Math.atan2(dy, dx)
+          const step = Math.min(MOVE_SPEED * dt, distance)
+          player.x += (dx / distance) * step
+          player.y += (dy / distance) * step
+        }
+
+        const draw = (now) => {
+          drawGrass(ctx, canvas.width, canvas.height)
+          drawActor(ctx, player, target, moving, facing, now)
+        }
+
+        canvas.addEventListener('click', (event) => {
+          try {
+            if (event.button !== 0) {
+              return
+            }
+
+            const point = toCanvasPoint(canvas, event)
+            target.x = clamp(point.x, EDGE_MARGIN, canvas.width - EDGE_MARGIN)
+            target.y = clamp(point.y, EDGE_MARGIN, canvas.height - EDGE_MARGIN)
+
+            const distance = Math.hypot(target.x - player.x, target.y - player.y)
+            if (distance <= ARRIVE_DISTANCE) {
+              moving = false
+              printStatus('이미 그 위치')
+              return
+            }
+
+            moving = true
+            facing = Math.atan2(target.y - player.y, target.x - player.x)
+            printStatus('이동 시작')
+          } catch (error) {
+            console.error('이동 처리 실패', error)
+          }
+        })
+
+        const loop = (now) => {
+          try {
+            const dt = lastTime === 0 ? 0 : Math.min((now - lastTime) / 1000, 0.05)
+            lastTime = now
+            update(dt)
+            draw(now)
+          } catch (error) {
+            console.error('프레임 처리 실패', error)
+          }
+          requestAnimationFrame(loop)
+        }
+
+        printStatus('게임 시작')
+        requestAnimationFrame(loop)
+      } catch (error) {
+        console.error('게임 시작 실패', error)
+      }
+    }
+
+    startGame()
+  </script>
+</body>
+</html>
