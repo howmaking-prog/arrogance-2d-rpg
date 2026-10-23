@@ -45,7 +45,7 @@ const startGame = () => {
         ctx.fillText(actor.hasFailed() ? '캐릭터 이미지를 불러오지 못했습니다.' : '캐릭터 이미지를 불러오는 중...', 24, 36)
         return
       }
-      actor.draw(ctx)
+      actor.draw(ctx, items.getEquippedWeapon())
     }
 
     canvas.addEventListener('click', (event) => {

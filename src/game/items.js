@@ -83,6 +83,7 @@ export const createFieldItems = (canvas) => {
   const chest = { ...CHEST, open: false }
   let droppedSword = null
   let swordReady = false
+  let equipped = false
   const inventory = []
 
   const swordImage = new Image()
@@ -117,6 +118,12 @@ export const createFieldItems = (canvas) => {
       }
       emptyLabel.hidden = hasSword
       inventoryItem.hidden = !hasSword
+      inventoryItem.classList.toggle('equipped', hasSword && equipped)
+      inventoryItem.title = equipped ? '더블클릭하면 장착을 해제합니다.' : '더블클릭하면 장착합니다.'
+      const label = inventoryItem.querySelector('span')
+      if (label) {
+        label.textContent = equipped ? `${SWORD_NAME} · 장착` : SWORD_NAME
+      }
       if (!hasSword || !(swordIcon instanceof HTMLCanvasElement)) {
         return
       }
@@ -165,6 +172,28 @@ export const createFieldItems = (canvas) => {
     }
   }
 
+  // 인벤토리의 검을 더블클릭하면 장착하고, 다시 더블클릭하면 해제한다.
+  const equipSword = () => {
+    try {
+      const hasSword = inventory.some((item) => item.name === SWORD_NAME)
+      if (!hasSword) {
+        return
+      }
+      equipped = !equipped
+      renderInventory()
+      console.log(`[상태] ${equipped ? '장착' : '장착 해제'} | ${SWORD_NAME}`)
+    } catch (error) {
+      console.error('장착 처리 실패', error)
+    }
+  }
+
+  if (inventoryItem instanceof HTMLElement) {
+    inventoryItem.addEventListener('dblclick', (event) => {
+      event.preventDefault()
+      equipSword()
+    })
+  }
+
   const storeSword = () => {
     try {
       if (!droppedSword) {
@@ -193,6 +222,7 @@ export const createFieldItems = (canvas) => {
     openChest,
     storeSword,
     keepInside,
+    getEquippedWeapon: () => (equipped && swordReady ? swordImage : null),
     hitChest: (point) => containsPoint(point, chest.x, chest.y, chest.width, chest.height),
     hitDroppedSword: (point) => {
       if (!droppedSword) {

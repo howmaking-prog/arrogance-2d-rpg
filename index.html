@@ -85,6 +85,12 @@
       justify-items: center;
       gap: 6px;
       font-size: 14px;
+      cursor: pointer;
+    }
+
+    #inventory-item.equipped {
+      outline: 2px solid #e6c36a;
+      border-radius: 6px;
     }
 
     #inventory-item[hidden] {
@@ -116,7 +122,7 @@
     <canvas id="game" aria-label="낡은 탑 1층 바닥 위의 탑뷰 캐릭터와 보물상자"></canvas>
     <header>
       <h1>Arrogance</h1>
-      <p>탑 1층. 좌클릭으로 이동하고, 보물상자를 클릭하면 놋쇠검이 떨어집니다. 떨어진 검을 더블클릭하면 인벤토리에 들어갑니다.</p>
+      <p>탑 1층. 좌클릭으로 이동하고, 보물상자를 클릭하면 놋쇠검이 떨어집니다. 떨어진 검은 더블클릭으로 줍고, 인벤토리에서 다시 더블클릭하면 장착합니다.</p>
     </header>
     <section id="inventory" aria-label="인벤토리">
       <h2>인벤토리</h2>

@@ -31,7 +31,7 @@ const directionFromDelta = (dx, dy) => {
 }
 
 // 클릭 지점과 LPC 스프라이트의 현재 걷기 프레임을 그린다.
-const drawActor = (ctx, sprite, player, target, moving) => {
+const drawActor = (ctx, sprite, player, target, moving, weaponImage) => {
   if (moving) {
     ctx.strokeStyle = 'rgba(255, 248, 214, 0.85)'
     ctx.lineWidth = 2
@@ -47,6 +47,8 @@ const drawActor = (ctx, sprite, player, target, moving) => {
 
   const row = WALK_ROWS[player.direction]
   const size = FRAME_SIZE * SPRITE_SCALE
+  const destX = player.x - FOOT_OFFSET_X * SPRITE_SCALE
+  const destY = player.y - FOOT_OFFSET_Y * SPRITE_SCALE
   ctx.imageSmoothingEnabled = false
   ctx.drawImage(
     sprite,
@@ -54,8 +56,24 @@ const drawActor = (ctx, sprite, player, target, moving) => {
     row * FRAME_SIZE,
     FRAME_SIZE,
     FRAME_SIZE,
-    player.x - FOOT_OFFSET_X * SPRITE_SCALE,
-    player.y - FOOT_OFFSET_Y * SPRITE_SCALE,
+    destX,
+    destY,
+    size,
+    size,
+  )
+
+  // 장착한 무기는 같은 걷기 칸에 겹쳐 손에 들리게 한다.
+  if (!weaponImage) {
+    return
+  }
+  ctx.drawImage(
+    weaponImage,
+    player.frame * FRAME_SIZE,
+    row * FRAME_SIZE,
+    FRAME_SIZE,
+    FRAME_SIZE,
+    destX,
+    destY,
     size,
     size,
   )
@@ -173,6 +191,6 @@ export const createPlayer = (canvas) => {
     printStatus,
     isReady: () => spriteReady,
     hasFailed: () => spriteFailed,
-    draw: (ctx) => drawActor(ctx, sprite, player, target, moving),
+    draw: (ctx, weaponImage) => drawActor(ctx, sprite, player, target, moving, weaponImage),
   }
 }
