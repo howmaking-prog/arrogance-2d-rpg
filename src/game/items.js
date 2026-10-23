@@ -187,10 +187,23 @@ export const createFieldItems = (canvas) => {
     }
   }
 
-  if (inventoryItem instanceof HTMLElement) {
-    inventoryItem.addEventListener('dblclick', (event) => {
-      event.preventDefault()
-      equipSword()
+  const inventoryPanel = document.getElementById('inventory')
+  if (inventoryPanel instanceof HTMLElement) {
+    // 칸 안의 캔버스는 더블클릭이 빠지는 경우가 있어, 두 번째 클릭으로 장착한다.
+    inventoryPanel.addEventListener('click', (event) => {
+      try {
+        if (event.detail !== 2 || !(event.target instanceof Element)) {
+          return
+        }
+        const slot = event.target.closest('#inventory-item')
+        if (!(slot instanceof HTMLElement) || slot.hidden) {
+          return
+        }
+        event.preventDefault()
+        equipSword()
+      } catch (error) {
+        console.error('장착 처리 실패', error)
+      }
     })
   }
 

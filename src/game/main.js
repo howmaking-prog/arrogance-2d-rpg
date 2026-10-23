@@ -1,6 +1,7 @@
-import { drawTowerFloor } from './floor.js'
-import { createFieldItems } from './items.js'
-import { createPlayer, toCanvasPoint } from './player.js'
+import { drawTowerFloor } from './floor.js?v=4'
+import { createFieldItems } from './items.js?v=4'
+import { createGoblin } from './monster.js?v=4'
+import { createPlayer, toCanvasPoint } from './player.js?v=4'
 
 const CLICK_DELAY = 220
 
@@ -32,12 +33,14 @@ const startGame = () => {
 
     const actor = createPlayer(canvas)
     const items = createFieldItems(canvas)
+    const goblin = createGoblin(canvas)
     let clickTimer = null
     let lastTime = 0
 
     const draw = () => {
       drawTowerFloor(ctx, canvas.width, canvas.height)
       items.draw(ctx)
+      goblin.draw(ctx)
       if (!actor.isReady()) {
         ctx.fillStyle = '#e8f0e4'
         ctx.font = '16px sans-serif'
@@ -111,6 +114,7 @@ const startGame = () => {
         }
         actor.keepInside()
         items.keepInside()
+        goblin.keepInside()
       } catch (error) {
         console.error('화면 크기 조정 실패', error)
       }
