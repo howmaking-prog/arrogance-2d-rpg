@@ -6,7 +6,7 @@ const CHEST_REACH = 120
 // 걷기 아래 방향 첫 칸에 있는 놋쇠검만 잘라 바닥 아이템으로 쓴다.
 const SWORD_URL = 'src/item/weapon/Sword_brass.png'
 const SWORD_SOURCE = { x: 25, y: 686, width: 20, height: 11 }
-const SWORD_SCALE = 5
+const SWORD_SCALE = 2
 const SWORD_NAME = '놋쇠검'
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value))

@@ -43,11 +43,16 @@
       text-shadow: 0 2px 8px #000;
     }
 
-    h1 {
-      margin: 0 0 6px;
+    h1,
+    h2 {
+      margin: 0;
       font-size: 22px;
       font-weight: 700;
       letter-spacing: 0.04em;
+    }
+
+    h2 {
+      font-size: 18px;
     }
 
     p {
@@ -56,22 +61,80 @@
       font-size: 14px;
     }
 
-    #inventory {
+    #hotbar {
       position: absolute;
-      top: 196px;
-      right: 16px;
-      z-index: 2;
-      width: 148px;
-      border: 2px solid #3a3228;
-      border-radius: 8px;
-      background: rgba(22, 18, 14, 0.9);
-      min-height: 160px;
-      padding: 12px;
+      left: 50%;
+      bottom: 16px;
+      z-index: 3;
+      display: flex;
+      gap: 8px;
+      max-width: calc(100% - 16px);
+      transform: translateX(-50%);
     }
 
-    #inventory h2 {
-      margin: 0 0 10px;
-      font-size: 16px;
+    #hotbar button,
+    .window-bar button {
+      border: 2px solid #6a5a42;
+      border-radius: 8px;
+      background: rgba(22, 18, 14, 0.92);
+      color: var(--ink);
+      font: inherit;
+      cursor: pointer;
+    }
+
+    #hotbar button {
+      padding: 10px 14px;
+      font-size: 14px;
+      white-space: nowrap;
+    }
+
+    @media (max-width: 720px) {
+      #hotbar {
+        gap: 4px;
+      }
+
+      #hotbar button {
+        padding: 8px 6px;
+        font-size: 12px;
+      }
+    }
+
+    #hotbar button[aria-pressed="true"] {
+      border-color: #e6c36a;
+      color: #f3dd9a;
+    }
+
+    .game-window {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      z-index: 4;
+      width: min(360px, calc(100% - 32px));
+      transform: translate(-50%, -50%);
+      border: 2px solid #6a5a42;
+      border-radius: 10px;
+      background: rgba(18, 15, 12, 0.94);
+      padding: 16px;
+    }
+
+    .game-window[hidden] {
+      display: none;
+    }
+
+    .window-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .window-bar button {
+      padding: 4px 10px;
+      font-size: 13px;
+    }
+
+    #inventory {
+      min-height: 180px;
     }
 
     #inventory-empty {
@@ -98,8 +161,8 @@
     }
 
     #sword-icon {
-      width: 100px;
-      height: 56px;
+      width: 64px;
+      height: 36px;
       image-rendering: pixelated;
       pointer-events: none;
     }
@@ -123,19 +186,64 @@
     <canvas id="game" aria-label="오만의 탑 1층"></canvas>
     <header>
       <h1 id="floor-title">오만의 탑 1층</h1>
-      <p>좌클릭으로 이동한다. 보물상자, 계단, 떨어진 검은 가까이 가서 커서가 손 모양일 때 더블클릭한다. 인벤토리의 검은 더블클릭으로 장착한다.</p>
     </header>
-    <section id="inventory" aria-label="인벤토리">
-      <h2>인벤토리</h2>
+    <nav id="hotbar" aria-label="단축키">
+      <button type="button" data-window="inventory" aria-pressed="false">가방</button>
+      <button type="button" data-window="skills" aria-pressed="false">스킬</button>
+      <button type="button" data-window="info" aria-pressed="false">정보</button>
+      <button type="button" data-window="leaderboard" aria-pressed="false">리더보드</button>
+      <button type="button" data-window="help" aria-pressed="false">도움말</button>
+      <button type="button" data-window="settings" aria-pressed="false">설정</button>
+    </nav>
+    <section id="inventory" class="game-window" hidden aria-label="가방">
+      <div class="window-bar">
+        <h2>가방</h2>
+        <button type="button" data-close="inventory">닫기</button>
+      </div>
       <p id="inventory-empty">비어 있음</p>
       <div id="inventory-item" hidden>
-        <canvas id="sword-icon" width="100" height="56" aria-hidden="true"></canvas>
+        <canvas id="sword-icon" width="80" height="44" aria-hidden="true"></canvas>
         <span>놋쇠검</span>
       </div>
     </section>
+    <section id="skills" class="game-window" hidden aria-label="스킬">
+      <div class="window-bar">
+        <h2>스킬</h2>
+        <button type="button" data-close="skills">닫기</button>
+      </div>
+      <p>등록된 스킬이 없습니다.</p>
+    </section>
+    <section id="info" class="game-window" hidden aria-label="정보">
+      <div class="window-bar">
+        <h2>정보</h2>
+        <button type="button" data-close="info">닫기</button>
+      </div>
+      <p>오만의 탑. 계단으로 위층과 아래층을 오갑니다.</p>
+    </section>
+    <section id="leaderboard" class="game-window" hidden aria-label="리더보드">
+      <div class="window-bar">
+        <h2>리더보드</h2>
+        <button type="button" data-close="leaderboard">닫기</button>
+      </div>
+      <p>아직 기록이 없습니다.</p>
+    </section>
+    <section id="help" class="game-window" hidden aria-label="도움말">
+      <div class="window-bar">
+        <h2>도움말</h2>
+        <button type="button" data-close="help">닫기</button>
+      </div>
+      <p>좌클릭으로 이동한다. 보물상자, 계단, 떨어진 검은 가까이 가서 커서가 손 모양일 때 더블클릭한다. 가방의 검은 더블클릭으로 장착한다.</p>
+    </section>
+    <section id="settings" class="game-window" hidden aria-label="설정">
+      <div class="window-bar">
+        <h2>설정</h2>
+        <button type="button" data-close="settings">닫기</button>
+      </div>
+      <p>변경할 설정이 없습니다.</p>
+    </section>
   </main>
 
-  <script type="module" src="src/game/main.js?v=7"></script>
+  <script type="module" src="src/game/main.js?v=8"></script>
 
 </body>
 </html>

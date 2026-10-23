@@ -1,13 +1,16 @@
-import { drawTowerFloor } from './floor.js?v=7'
-import { createFieldItems } from './items.js?v=7'
-import { createGoblin } from './monster.js?v=7'
-import { createPlayer, toCanvasPoint } from './player.js?v=7'
-import { STAIR_REACH, drawStairs, stairAtPoint, stairSpots } from './stairs.js?v=7'
+import { drawTowerFloor } from './floor.js?v=8'
+import { createHud } from './hud.js?v=8'
+import { createFieldItems } from './items.js?v=8'
+import { createGoblin } from './monster.js?v=8'
+import { createPlayer, toCanvasPoint } from './player.js?v=8'
+import { STAIR_REACH, drawStairs, stairAtPoint, stairSpots } from './stairs.js?v=8'
 
 const CLICK_DELAY = 220
 const FIELD_MARGIN_X = 96
 const FIELD_MARGIN_TOP = 180
-const FIELD_MARGIN_BOTTOM = 96
+const FIELD_MARGIN_BOTTOM = 160
+const START_X = 156
+const START_BOTTOM = 150
 const SPAWN_GAP = 180
 const ARRIVAL_OFFSET = 140
 
@@ -24,9 +27,8 @@ const randomFieldPoint = (canvas, blocked) => {
       y: minY + Math.random() * (maxY - minY),
     }
     const separated = blocked.every((other) => Math.hypot(point.x - other.x, point.y - other.y) >= SPAWN_GAP)
-    const underInventory = point.x > canvas.width - 190 && point.y > 170 && point.y < 420
-    const underHeader = point.x < 360 && point.y < 170
-    if (separated && !underInventory && !underHeader) {
+    const underTitle = point.x < 280 && point.y < 80
+    if (separated && !underTitle) {
       return point
     }
   }
@@ -83,6 +85,8 @@ const startGame = () => {
     let floor = 1
     const floors = new Map()
     const actor = createPlayer(canvas)
+    actor.placeAt({ x: START_X, y: canvas.height - START_BOTTOM })
+    createHud()
     const opening = stairSpots(canvas, floor)
     const chestSpot = randomFieldPoint(canvas, [actor.getPosition(), ...opening])
     const goblinSpot = randomFieldPoint(canvas, [actor.getPosition(), chestSpot, ...opening])
