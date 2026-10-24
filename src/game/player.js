@@ -114,7 +114,10 @@ export const createPlayer = (canvas) => {
   let spriteFailed = false
   let isBlocked = () => false
 
+  let worldBounds = null
+
   const footBounds = () => playerFootBounds(canvas)
+  const moveBounds = () => worldBounds || footBounds()
 
   const blockedAt = (x, y) => {
     try {
@@ -211,7 +214,7 @@ export const createPlayer = (canvas) => {
   }
 
   const beginMove = (point) => {
-    const bounds = footBounds()
+    const bounds = moveBounds()
     target.x = clamp(point.x, bounds.minX, bounds.maxX)
     target.y = clamp(point.y, bounds.minY, bounds.maxY)
 
@@ -228,7 +231,7 @@ export const createPlayer = (canvas) => {
   }
 
   const keepInside = () => {
-    const bounds = footBounds()
+    const bounds = moveBounds()
     player.x = clamp(player.x, bounds.minX, bounds.maxX)
     player.y = clamp(player.y, bounds.minY, bounds.maxY)
     target.x = clamp(target.x, bounds.minX, bounds.maxX)
@@ -246,8 +249,11 @@ export const createPlayer = (canvas) => {
     setBlocked: (fn) => {
       isBlocked = typeof fn === 'function' ? fn : () => false
     },
+    setWorldBounds: (bounds) => {
+      worldBounds = bounds
+    },
     placeAt: (point) => {
-      const bounds = footBounds()
+      const bounds = moveBounds()
       player.x = clamp(point.x, bounds.minX, bounds.maxX)
       player.y = clamp(point.y, bounds.minY, bounds.maxY)
       target.x = player.x

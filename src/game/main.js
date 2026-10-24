@@ -1,12 +1,12 @@
 import { createCombatManager } from './combat/combat.js?v=15'
 import { createCombatView } from './combat/combatView.js?v=15'
 import { createGoblinProfile } from './combat/monsterStats.js?v=15'
-import { createDungeonLayout } from './dungeon/layout.js?v=14'
-import { drawTowerFloor } from './floor.js?v=14'
+import { createDungeonLayout } from './dungeon/layout.js?v=16'
+import { drawTowerFloor } from './floor.js?v=16'
 import { createHud } from './hud.js?v=10'
 import { createFieldItems } from './items.js?v=10'
 import { createGoblin } from './monster.js?v=15'
-import { createPlayer, playerFootBounds, toCanvasPoint } from './player.js?v=15'
+import { createPlayer, toCanvasPoint } from './player.js?v=16'
 import { drawStairs, stairAtPoint, stairsFromLayout } from './stairs.js?v=14'
 import { createStatProgression } from './stats/progression.js?v=10'
 import { createStatSheet } from './stats/statSheet.js?v=10'
@@ -30,7 +30,7 @@ const startGame = () => {
 
     const floorTitle = document.getElementById('floor-title')
 
-    // 캔버스 해상도를 브라우저 영역에 맞춰 맵을 늘린다.
+    // 보이는 화면만 맞춘다. 던전 크기는 화면과 따로 둔다.
     const fitCanvas = () => {
       const width = Math.max(480, Math.floor(canvas.clientWidth))
       const height = Math.max(320, Math.floor(canvas.clientHeight))
@@ -49,13 +49,19 @@ const startGame = () => {
     const floors = new Map()
     const actor = createPlayer(canvas)
     let layout = createDungeonLayout({
-      width: canvas.width,
-      height: canvas.height,
       floor,
       seed: dungeonSeed,
-      bounds: playerFootBounds(canvas),
     })
-    actor.setBlocked((x, y) => !layout.isWalkable(x, y))
+    const bindWorld = () => {
+      actor.setWorldBounds({
+        minX: layout.tileSize / 2,
+        minY: layout.tileSize / 2,
+        maxX: layout.worldWidth - layout.tileSize / 2,
+        maxY: layout.worldHeight - layout.tileSize / 2,
+      })
+      actor.setBlocked((x, y) => !layout.isWalkable(x, y))
+    }
+    bindWorld()
     actor.placeAt(layout.playerStart)
     createHud()
     const items = createFieldItems(canvas, layout.chest)
@@ -98,19 +104,24 @@ const startGame = () => {
         floorTitle.textContent = label
       }
       canvas.setAttribute('aria-label', label)
-      console.log(`[상태] ${label} | ${layout.theme.label}`)
+      console.log(`[상태] ${label} | ${layout.theme.label} | 맵 ${layout.cols}x${layout.rows}`)
     }
 
     const rebuildLayout = (seed) => {
       dungeonSeed = seed
       layout = createDungeonLayout({
-        width: canvas.width,
-        height: canvas.height,
         floor,
         seed: dungeonSeed,
-        bounds: playerFootBounds(canvas),
       })
-      actor.setBlocked((x, y) => !layout.isWalkable(x, y))
+      bindWorld()
+    }
+
+    const viewCamera = () => layout.camera(actor.getPosition(), canvas.width, canvas.height)
+
+    const toWorldPoint = (event) => {
+      const point = toCanvasPoint(canvas, event)
+      const camera = viewCamera()
+      return { x: point.x + camera.x, y: point.y + camera.y }
     }
 
     const canOpenChest = (point) => items.hitChest(point) && items.isChestInReach(actor.getPosition())
@@ -226,31 +237,38 @@ const startGame = () => {
     })
 
     const draw = () => {
-      drawTowerFloor(ctx, canvas.width, canvas.height, layout)
+      const camera = viewCamera()
+      ctx.fillStyle = '#070604'
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      ctx.save()
+      ctx.translate(-Math.round(camera.x), -Math.round(camera.y))
+      drawTowerFloor(ctx, layout)
       drawStairs(ctx, currentStairs())
       items.draw(ctx)
       const state = combat.getSnapshot()
       goblin.draw(ctx, state.monsterFlash)
+      if (actor.isReady()) {
+        actor.draw(ctx, items.getEquippedWeapon(), state.playerFlash)
+        const playerPoint = actor.getPosition()
+        const monsterPoint = goblin.getPosition()
+        combatView.drawFloats(ctx, state.floats.map((item) => ({
+          ...item,
+          x: item.target === 'monster' ? monsterPoint.x : playerPoint.x,
+          y: (item.target === 'monster' ? monsterPoint.y : playerPoint.y) - 88,
+        })))
+      }
+      ctx.restore()
       if (!actor.isReady()) {
         ctx.fillStyle = '#e8f0e4'
         ctx.font = '16px sans-serif'
         ctx.textAlign = 'left'
         ctx.fillText(actor.hasFailed() ? '캐릭터 이미지를 불러오지 못했습니다.' : '캐릭터 이미지를 불러오는 중...', 24, 36)
-        return
       }
-      actor.draw(ctx, items.getEquippedWeapon(), state.playerFlash)
-      const playerPoint = actor.getPosition()
-      const monsterPoint = goblin.getPosition()
-      combatView.drawFloats(ctx, state.floats.map((item) => ({
-        ...item,
-        x: item.target === 'monster' ? monsterPoint.x : playerPoint.x,
-        y: (item.target === 'monster' ? monsterPoint.y : playerPoint.y) - 88,
-      })))
     }
 
     canvas.addEventListener('mousemove', (event) => {
       try {
-        pointer = toCanvasPoint(canvas, event)
+        pointer = toWorldPoint(event)
         refreshCursor()
       } catch (error) {
         console.error('커서 처리 실패', error)
@@ -268,7 +286,7 @@ const startGame = () => {
           return
         }
 
-        const point = toCanvasPoint(canvas, event)
+        const point = toWorldPoint(event)
         clearTimeout(clickTimer)
         if (combat.isBusy() || canOpenChest(point) || canTakeSword(point)) {
           return
@@ -292,7 +310,7 @@ const startGame = () => {
         if (combat.isBusy()) {
           return
         }
-        const point = toCanvasPoint(canvas, event)
+        const point = toWorldPoint(event)
         if (canTakeSword(point)) {
           items.storeSword()
           return
@@ -342,20 +360,7 @@ const startGame = () => {
 
     window.addEventListener('resize', () => {
       try {
-        if (!fitCanvas()) {
-          return
-        }
-        const savedItems = items.captureFloor()
-        const savedGoblin = goblin.capture()
-        rebuildLayout(dungeonSeed)
-        items.applyFloor({
-          ...savedItems,
-          x: layout.chest.x,
-          y: layout.chest.y,
-          droppedSword: savedItems.droppedSword ? layout.nearestWalkable(savedItems.droppedSword) : null,
-        })
-        goblin.place(layout.nearestWalkable(savedGoblin))
-        actor.placeAt(layout.nearestWalkable(actor.getPosition()))
+        fitCanvas()
       } catch (error) {
         console.error('화면 크기 조정 실패', error)
       }
