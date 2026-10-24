@@ -47,7 +47,7 @@ const directionFromDelta = (dx, dy) => {
 }
 
 // 클릭 지점과 LPC 스프라이트의 현재 걷기 프레임을 그린다.
-const drawActor = (ctx, sprite, player, target, moving, weaponImage) => {
+const drawActor = (ctx, sprite, player, target, moving, weaponImage, flash) => {
   if (moving) {
     ctx.strokeStyle = 'rgba(255, 248, 214, 0.85)'
     ctx.lineWidth = 2
@@ -79,20 +79,24 @@ const drawActor = (ctx, sprite, player, target, moving, weaponImage) => {
   )
 
   // 장착한 무기는 같은 걷기 칸에 겹쳐 손에 들리게 한다.
-  if (!weaponImage) {
+  if (weaponImage) {
+    ctx.drawImage(
+      weaponImage,
+      player.frame * FRAME_SIZE,
+      row * FRAME_SIZE,
+      FRAME_SIZE,
+      FRAME_SIZE,
+      destX,
+      destY,
+      size,
+      size,
+    )
+  }
+  if (!flash) {
     return
   }
-  ctx.drawImage(
-    weaponImage,
-    player.frame * FRAME_SIZE,
-    row * FRAME_SIZE,
-    FRAME_SIZE,
-    FRAME_SIZE,
-    destX,
-    destY,
-    size,
-    size,
-  )
+  ctx.fillStyle = flash === 'crit' ? 'rgba(255, 64, 48, 0.5)' : 'rgba(255, 255, 255, 0.55)'
+  ctx.fillRect(destX, destY, size, size)
 }
 
 // 캔버스 크기가 정해진 뒤 플레이어를 만든다.
@@ -250,6 +254,6 @@ export const createPlayer = (canvas) => {
       target.y = player.y
       stopWalking()
     },
-    draw: (ctx, weaponImage) => drawActor(ctx, sprite, player, target, moving, weaponImage),
+    draw: (ctx, weaponImage, flash) => drawActor(ctx, sprite, player, target, moving, weaponImage, flash),
   }
 }

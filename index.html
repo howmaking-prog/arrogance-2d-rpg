@@ -243,6 +243,99 @@
       background: #2a241e;
       image-rendering: pixelated;
     }
+
+    #combat {
+      position: absolute;
+      left: 16px;
+      right: 16px;
+      bottom: 72px;
+      z-index: 4;
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      pointer-events: none;
+    }
+
+    #combat[hidden] {
+      display: none;
+    }
+
+    .combat-card {
+      width: min(320px, 46vw);
+      padding: 10px 12px;
+      background: rgba(18, 15, 12, 0.92);
+      border: 2px solid #6a5a42;
+      color: var(--ink);
+    }
+
+    .combat-card p {
+      margin: 6px 0;
+      font-size: 13px;
+    }
+
+    .meter {
+      height: 10px;
+      margin-top: 4px;
+      background: #2a241c;
+      border: 1px solid #6a5a42;
+    }
+
+    .meter span {
+      display: block;
+      height: 100%;
+      width: 0;
+    }
+
+    .meter.hp span {
+      background: #c4483a;
+    }
+
+    .meter.mp span {
+      background: #3a78c4;
+    }
+
+    #combat-skill-list {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+      pointer-events: auto;
+    }
+
+    #combat-skill-list button,
+    #combat-result button {
+      border: 2px solid #6a5a42;
+      background: #1b1612;
+      color: var(--ink);
+      font: inherit;
+      cursor: pointer;
+      padding: 8px 10px;
+    }
+
+    #combat-skill-list button:disabled {
+      opacity: 0.45;
+      cursor: default;
+    }
+
+    #combat-result {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      z-index: 6;
+      width: min(360px, calc(100% - 32px));
+      padding: 20px;
+      transform: translate(-50%, -50%);
+      background: rgba(18, 15, 12, 0.96);
+      border: 2px solid #e6c36a;
+      text-align: center;
+    }
+
+    #combat-result[hidden] {
+      display: none;
+    }
+
+    #combat-result p {
+      margin: 12px 0;
+    }
   </style>
 </head>
 <body>
@@ -275,7 +368,7 @@
         <h2>스킬</h2>
         <button type="button" data-close="skills">닫기</button>
       </div>
-      <p>등록된 스킬이 없습니다.</p>
+      <p>강타는 마나 15로 공격력의 2배, 일격은 마나 30으로 공격력의 3배다. 고블린과 싸우는 중에 쓸 수 있다.</p>
     </section>
     <section id="info" class="game-window" hidden aria-label="정보">
       <div class="window-bar">
@@ -296,7 +389,7 @@
         <h2>도움말</h2>
         <button type="button" data-close="help">닫기</button>
       </div>
-      <p>좌클릭으로 이동한다. 벽과 빈 공간은 지나갈 수 없다. 보물상자와 떨어진 검은 가까이 가서 커서가 손 모양일 때 더블클릭한다. 계단 위에 도착하면 위층이나 아래층으로 이동한다. 가방의 검은 더블클릭으로 장착한다.</p>
+      <p>좌클릭으로 이동한다. 벽과 빈 공간은 지나갈 수 없다. 고블린에게 다가가면 전투가 시작되고 기본 공격은 자동이다. 보물상자와 떨어진 검은 가까이 가서 커서가 손 모양일 때 더블클릭한다. 계단 위에 도착하면 위층이나 아래층으로 이동한다. 가방의 검은 더블클릭으로 장착한다.</p>
     </section>
     <section id="settings" class="game-window" hidden aria-label="설정">
       <div class="window-bar">
@@ -305,9 +398,27 @@
       </div>
       <p>변경할 설정이 없습니다.</p>
     </section>
+    <section id="combat" hidden aria-label="전투">
+      <div class="combat-card">
+        <p id="combat-player-label">HP</p>
+        <div class="meter hp"><span id="combat-player-hp"></span></div>
+        <div class="meter mp"><span id="combat-player-mp"></span></div>
+        <div id="combat-skill-list"></div>
+      </div>
+      <div class="combat-card">
+        <p id="combat-monster-label">몬스터</p>
+        <div class="meter hp"><span id="combat-monster-hp"></span></div>
+      </div>
+    </section>
+    <section id="combat-result" hidden aria-label="전투 결과">
+      <h2 id="combat-result-title">승리</h2>
+      <p id="combat-result-body"></p>
+      <button type="button" id="combat-next">다음 층</button>
+      <button type="button" id="combat-restart" hidden>다시 시작</button>
+    </section>
   </main>
 
-  <script type="module" src="src/game/main.js?v=14"></script>
+  <script type="module" src="src/game/main.js?v=15"></script>
 
 </body>
 </html>

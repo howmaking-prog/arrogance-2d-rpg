@@ -1,14 +1,18 @@
+import { createCombatManager } from './combat/combat.js?v=15'
+import { createCombatView } from './combat/combatView.js?v=15'
+import { createGoblinProfile } from './combat/monsterStats.js?v=15'
 import { createDungeonLayout } from './dungeon/layout.js?v=14'
 import { drawTowerFloor } from './floor.js?v=14'
 import { createHud } from './hud.js?v=10'
 import { createFieldItems } from './items.js?v=10'
-import { createGoblin } from './monster.js?v=10'
-import { createPlayer, playerFootBounds, toCanvasPoint } from './player.js?v=14'
+import { createGoblin } from './monster.js?v=15'
+import { createPlayer, playerFootBounds, toCanvasPoint } from './player.js?v=15'
 import { drawStairs, stairAtPoint, stairsFromLayout } from './stairs.js?v=14'
 import { createStatProgression } from './stats/progression.js?v=10'
 import { createStatSheet } from './stats/statSheet.js?v=10'
 
 const CLICK_DELAY = 220
+const ENGAGE_DISTANCE = 120
 
 const randomSeed = () => 1 + Math.floor(Math.random() * 1000000)
 
@@ -66,6 +70,25 @@ const startGame = () => {
     let lastTime = 0
     let pointer = null
     let holdStairs = false
+    let vitals = null
+    const wallet = { exp: 0, gold: 0 }
+    const combat = createCombatManager({
+      getPlayer: () => {
+        const state = progression.getState()
+        const maxHpValue = state.derived.maxHp
+        const maxMpValue = state.derived.maxMp
+        return {
+          maxHp: maxHpValue,
+          maxMp: maxMpValue,
+          hp: vitals ? Math.min(vitals.hp, maxHpValue) : maxHpValue,
+          mp: vitals ? Math.min(vitals.mp, maxMpValue) : maxMpValue,
+          atk: state.derived.totalAtk,
+          def: state.derived.totalDef,
+          attackSpeed: state.derived.attackSpeed,
+          critChance: state.derived.critChancePercent / 100,
+        }
+      },
+    })
 
     const currentStairs = () => stairsFromLayout(layout, floor)
 
@@ -141,7 +164,7 @@ const startGame = () => {
           open: false,
           droppedSword: null,
         })
-        goblin.place(layout.encounter)
+        goblin.place({ ...layout.encounter, alive: true })
       }
 
       const here = direction === 'up' ? layout.playerStart : layout.exitApproach
@@ -160,11 +183,54 @@ const startGame = () => {
       showFloor()
     }
 
+    const applyCombatResult = (result) => {
+      if (!result) {
+        return
+      }
+      const state = combat.getSnapshot()
+      vitals = state.player ? { hp: state.player.hp, mp: state.player.mp } : vitals
+      if (result.result === 'victory' && result.reward) {
+        wallet.exp += result.reward.exp
+        wallet.gold += result.reward.gold
+        console.log(`[상태] 승리 | 경험치 ${wallet.exp} | 골드 ${wallet.gold}`)
+        combatView.showVictory({
+          exp: result.reward.exp,
+          gold: result.reward.gold,
+        })
+        return
+      }
+      if (result.result === 'defeat') {
+        console.log('[상태] 패배')
+        combatView.showDefeat()
+      }
+    }
+
+    const combatView = createCombatView({
+      onSkill: (skillId) => {
+        const cast = combat.useSkill(skillId)
+        if (!cast.ok && cast.reason) {
+          console.log(`[상태] ${cast.reason}`)
+        }
+        applyCombatResult(combat.takeResult())
+      },
+      onNextFloor: () => {
+        combatView.hideResult()
+        combatView.setOpen(false)
+        vitals = combat.end()
+        goblin.defeat()
+        changeFloor('up')
+      },
+      onRestart: () => {
+        window.location.reload()
+      },
+    })
+
     const draw = () => {
       drawTowerFloor(ctx, canvas.width, canvas.height, layout)
       drawStairs(ctx, currentStairs())
       items.draw(ctx)
-      goblin.draw(ctx)
+      const state = combat.getSnapshot()
+      goblin.draw(ctx, state.monsterFlash)
       if (!actor.isReady()) {
         ctx.fillStyle = '#e8f0e4'
         ctx.font = '16px sans-serif'
@@ -172,7 +238,14 @@ const startGame = () => {
         ctx.fillText(actor.hasFailed() ? '캐릭터 이미지를 불러오지 못했습니다.' : '캐릭터 이미지를 불러오는 중...', 24, 36)
         return
       }
-      actor.draw(ctx, items.getEquippedWeapon())
+      actor.draw(ctx, items.getEquippedWeapon(), state.playerFlash)
+      const playerPoint = actor.getPosition()
+      const monsterPoint = goblin.getPosition()
+      combatView.drawFloats(ctx, state.floats.map((item) => ({
+        ...item,
+        x: item.target === 'monster' ? monsterPoint.x : playerPoint.x,
+        y: (item.target === 'monster' ? monsterPoint.y : playerPoint.y) - 88,
+      })))
     }
 
     canvas.addEventListener('mousemove', (event) => {
@@ -197,7 +270,7 @@ const startGame = () => {
 
         const point = toCanvasPoint(canvas, event)
         clearTimeout(clickTimer)
-        if (canOpenChest(point) || canTakeSword(point)) {
+        if (combat.isBusy() || canOpenChest(point) || canTakeSword(point)) {
           return
         }
 
@@ -216,6 +289,9 @@ const startGame = () => {
     canvas.addEventListener('dblclick', (event) => {
       try {
         clearTimeout(clickTimer)
+        if (combat.isBusy()) {
+          return
+        }
         const point = toCanvasPoint(canvas, event)
         if (canTakeSword(point)) {
           items.storeSword()
@@ -235,8 +311,27 @@ const startGame = () => {
       try {
         const dt = lastTime === 0 ? 0 : Math.min((now - lastTime) / 1000, 0.05)
         lastTime = now
-        actor.update(dt)
-        stepOntoStairs()
+        if (!combat.isBusy()) {
+          actor.update(dt)
+          stepOntoStairs()
+          const here = actor.getPosition()
+          const foe = goblin.getPosition()
+          const nearMonster = goblin.isAlive() && Math.hypot(here.x - foe.x, here.y - foe.y) <= ENGAGE_DISTANCE
+          if (nearMonster) {
+            actor.placeAt(here)
+            const started = combat.start(createGoblinProfile(floor))
+            combatView.resetBars(started)
+            combatView.hideResult()
+            combatView.setOpen(true)
+            console.log(`[상태] 전투 시작 | ${started.monster.name}`)
+          }
+        } else if (combat.isFighting()) {
+          combat.update(dt)
+          applyCombatResult(combat.takeResult())
+          combatView.sync(dt, combat.getSnapshot())
+        } else {
+          combatView.sync(dt, combat.getSnapshot())
+        }
         refreshCursor()
         draw()
       } catch (error) {
