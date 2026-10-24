@@ -1,6 +1,6 @@
-import { generateDungeon } from './generator.js?v=13'
-import { modeForFloor, themeForMode } from './themes.js?v=13'
-import { TILE } from './tiles.js?v=13'
+import { generateDungeon } from './generator.js?v=14'
+import { modeForFloor, themeForMode } from './themes.js?v=14'
+import { TILE } from './tiles.js?v=14'
 
 const TARGET_COLUMNS = 30
 const TARGET_ROWS = 20
@@ -134,6 +134,7 @@ export const createDungeonLayout = ({ width, height, floor, seed, bounds }) => {
     const trapTiles = dungeon.monsterSpawns
       .filter((spawn) => spawn.kind === 'trap')
       .map((spawn) => ({ x: spawn.x, y: spawn.y }))
+    const encounter = monsterPixels[0] || (trapTiles[0] ? toPixel(trapTiles[0]) : toPixel(dungeon.chestSpawn))
 
     return {
       seed,
@@ -153,6 +154,7 @@ export const createDungeonLayout = ({ width, height, floor, seed, bounds }) => {
       downStair: toPixel(separatedDown),
       chest: toPixel(dungeon.chestSpawn),
       monsters: monsterPixels,
+      encounter,
       isWalkable,
       nearestWalkable,
     }

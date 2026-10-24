@@ -76,7 +76,7 @@ export const drawStairs = (ctx, spots) => {
   })
 }
 
-// 출구 방에 위층 계단을, 시작 방에 아래층 계단을 둔다.
+// 출구 칸에 위층 계단을, 시작 방에 아래층 계단을 둔다.
 export const stairsFromLayout = (layout, floor) => {
   const span = Math.max(28, layout.tileSize - 8)
   const height = Math.round(span * 0.75)

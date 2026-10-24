@@ -1,10 +1,10 @@
-import { createDungeonLayout } from './dungeon/layout.js?v=13'
-import { drawTowerFloor } from './floor.js?v=13'
-import { createHud } from './hud.js?v=12'
-import { createFieldItems } from './items.js?v=12'
-import { createMonsters } from './monster.js?v=13'
-import { createPlayer, playerFootBounds, toCanvasPoint } from './player.js?v=13'
-import { drawStairs, stairAtPoint, stairsFromLayout } from './stairs.js?v=13'
+import { createDungeonLayout } from './dungeon/layout.js?v=14'
+import { drawTowerFloor } from './floor.js?v=14'
+import { createHud } from './hud.js?v=10'
+import { createFieldItems } from './items.js?v=10'
+import { createGoblin } from './monster.js?v=10'
+import { createPlayer, playerFootBounds, toCanvasPoint } from './player.js?v=14'
+import { drawStairs, stairAtPoint, stairsFromLayout } from './stairs.js?v=14'
 import { createStatProgression } from './stats/progression.js?v=10'
 import { createStatSheet } from './stats/statSheet.js?v=10'
 
@@ -55,7 +55,7 @@ const startGame = () => {
     actor.placeAt(layout.playerStart)
     createHud()
     const items = createFieldItems(canvas, layout.chest)
-    const monsters = createMonsters(canvas, layout.monsters)
+    const goblin = createGoblin(canvas, layout.encounter)
     const progression = createStatProgression()
     const statSheet = createStatSheet(progression, () => ({
       weaponAtk: items.getEquippedAttack(),
@@ -78,7 +78,6 @@ const startGame = () => {
       console.log(`[상태] ${label} | ${layout.theme.label}`)
     }
 
-    // 같은 시드로 방과 복도를 다시 만들고, 발밑이 벽이면 막는다.
     const rebuildLayout = (seed) => {
       dungeonSeed = seed
       layout = createDungeonLayout({
@@ -115,7 +114,7 @@ const startGame = () => {
       changeFloor(stood.direction)
     }
 
-    // 방문한 층은 같은 시드로 되돌리고, 처음 가는 층만 새로 만든다.
+    // 방문한 층은 그대로 두고, 처음 가는 층만 새로 배치한다.
     const changeFloor = (direction) => {
       const nextFloor = direction === 'up' ? floor + 1 : floor - 1
       if (nextFloor < 1) {
@@ -124,8 +123,7 @@ const startGame = () => {
 
       floors.set(floor, {
         items: items.captureFloor(),
-        monsters: monsters.capture(),
-        goblin: monsters.capture()[0] || null,
+        goblin: goblin.capture(),
         seed: dungeonSeed,
       })
       floor = nextFloor
@@ -134,7 +132,7 @@ const startGame = () => {
       if (saved) {
         rebuildLayout(saved.seed)
         items.applyFloor(saved.items)
-        monsters.placeAll(saved.monsters)
+        goblin.place(saved.goblin)
       } else {
         rebuildLayout(randomSeed())
         items.applyFloor({
@@ -143,7 +141,7 @@ const startGame = () => {
           open: false,
           droppedSword: null,
         })
-        monsters.placeAll(layout.monsters)
+        goblin.place(layout.encounter)
       }
 
       const here = direction === 'up' ? layout.playerStart : layout.exitApproach
@@ -166,7 +164,7 @@ const startGame = () => {
       drawTowerFloor(ctx, canvas.width, canvas.height, layout)
       drawStairs(ctx, currentStairs())
       items.draw(ctx)
-      monsters.draw(ctx)
+      goblin.draw(ctx)
       if (!actor.isReady()) {
         ctx.fillStyle = '#e8f0e4'
         ctx.font = '16px sans-serif'
@@ -253,6 +251,7 @@ const startGame = () => {
           return
         }
         const savedItems = items.captureFloor()
+        const savedGoblin = goblin.capture()
         rebuildLayout(dungeonSeed)
         items.applyFloor({
           ...savedItems,
@@ -260,7 +259,7 @@ const startGame = () => {
           y: layout.chest.y,
           droppedSword: savedItems.droppedSword ? layout.nearestWalkable(savedItems.droppedSword) : null,
         })
-        monsters.placeAll(layout.monsters)
+        goblin.place(layout.nearestWalkable(savedGoblin))
         actor.placeAt(layout.nearestWalkable(actor.getPosition()))
       } catch (error) {
         console.error('화면 크기 조정 실패', error)

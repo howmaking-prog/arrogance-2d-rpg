@@ -13,7 +13,7 @@ const DIRECTION_LABEL = { up: '위', left: '왼쪽', down: '아래', right: '오
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value))
 
-// 발이 화면 안에 남는 범위. 낮은 창에서는 위쪽 여백을 줄여 방이 잘리지 않게 한다.
+// 발이 화면 안에 남는 범위. 넓은 창에서는 스프라이트가 잘리지 않는 위치를 유지한다.
 export const playerFootBounds = (canvas) => {
   const side = Math.min(FOOT_OFFSET_X * SPRITE_SCALE, Math.max(16, Math.floor(canvas.width * 0.08)))
   const preferredTop = FOOT_OFFSET_Y * SPRITE_SCALE
