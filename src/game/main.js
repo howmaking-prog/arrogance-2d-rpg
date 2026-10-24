@@ -1,9 +1,9 @@
 import { createStatProgression } from './stats/progression.js?v=10'
 import { createStatSheet } from './stats/statSheet.js?v=10'
-import { drawTowerFloor } from './floor.js?v=11'
-import { createHud } from './hud.js?v=10'
-import { createFieldItems } from './items.js?v=10'
-import { createGoblin } from './monster.js?v=10'
+import { drawTowerFloor } from './floor.js?v=12'
+import { createFieldItems } from './items.js?v=12'
+import { createHud } from './hud.js?v=12'
+import { createGoblin } from './monster.js?v=12'
 import { createPlayer, toCanvasPoint } from './player.js?v=10'
 import { drawStairs, stairAtPoint, stairSpots } from './stairs.js?v=10'
 
