@@ -389,7 +389,7 @@
         <h2>도움말</h2>
         <button type="button" data-close="help">닫기</button>
       </div>
-      <p>좌클릭으로 이동한다. 층은 화면보다 넓고, 화면은 캐릭터를 따라간다. 벽과 빈 공간은 지나갈 수 없다. 고블린에게 다가가면 전투가 시작되고 기본 공격은 자동이다. 보물상자와 떨어진 검은 가까이 가서 커서가 손 모양일 때 더블클릭한다. 위층 계단은 층마다 다른 곳에 있고, 그 위에 도착하면 올라간다. 가방의 검은 더블클릭으로 장착한다.</p>
+      <p>좌클릭으로 이동한다. 층은 화면보다 넓고, 화면은 캐릭터를 따라간다. 벽과 빈 공간은 지나갈 수 없다. 고블린에게 다가가면 전투가 시작되고 기본 공격은 자동이다. 몬스터를 쓰러뜨려도 그 층에 남는다. 보물상자와 떨어진 검은 가까이 가서 커서가 손 모양일 때 더블클릭한다. 위층 계단은 층마다 다른 곳에 있고, 그 위에 도착하면 올라간다. 가방의 검은 더블클릭으로 장착한다.</p>
     </section>
     <section id="settings" class="game-window" hidden aria-label="설정">
       <div class="window-bar">
@@ -413,12 +413,12 @@
     <section id="combat-result" hidden aria-label="전투 결과">
       <h2 id="combat-result-title">승리</h2>
       <p id="combat-result-body"></p>
-      <button type="button" id="combat-next">다음 층</button>
+      <button type="button" id="combat-next">확인</button>
       <button type="button" id="combat-restart" hidden>다시 시작</button>
     </section>
   </main>
 
-  <script type="module" src="src/game/main.js?v=16"></script>
+  <script type="module" src="src/game/main.js?v=18"></script>
 
 </body>
 </html>

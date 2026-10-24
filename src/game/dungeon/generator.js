@@ -166,6 +166,52 @@ const applyCorridors = (grid, rooms, roomFloors) => {
   })
 }
 
+// 한 칸 복도는 캐릭터보다 좁아서, 복도 바닥을 양옆으로 한 칸씩 넓힌다.
+const widenCorridors = (grid, roomFloors) => {
+  const height = grid.length
+  const width = grid[0].length
+  const grown = []
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const kind = grid[y][x]
+      if ((kind !== TILE.FLOOR && kind !== TILE.DOOR) || roomFloors.has(keyOf(x, y))) {
+        continue
+      }
+      for (let dy = -1; dy <= 1; dy += 1) {
+        for (let dx = -1; dx <= 1; dx += 1) {
+          const nextX = x + dx
+          const nextY = y + dy
+          if (!inside(width, height, nextX, nextY) || roomFloors.has(keyOf(nextX, nextY))) {
+            continue
+          }
+          if (grid[nextY][nextX] === TILE.EMPTY || grid[nextY][nextX] === TILE.WALL) {
+            grown.push({ x: nextX, y: nextY })
+          }
+        }
+      }
+    }
+  }
+  grown.forEach((cell) => {
+    if (grid[cell.y][cell.x] === TILE.EMPTY || grid[cell.y][cell.x] === TILE.WALL) {
+      grid[cell.y][cell.x] = TILE.FLOOR
+    }
+  })
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      if (grid[y][x] !== TILE.FLOOR && grid[y][x] !== TILE.DOOR) {
+        continue
+      }
+      NEIGHBORS.forEach(([dx, dy]) => {
+        const nextX = x + dx
+        const nextY = y + dy
+        if (inside(width, height, nextX, nextY) && grid[nextY][nextX] === TILE.EMPTY) {
+          grid[nextY][nextX] = TILE.WALL
+        }
+      })
+    }
+  }
+}
+
 const tilesInRoom = (grid, room) => {
   const tiles = []
   for (let y = room.y; y < room.y + room.height; y += 1) {
@@ -258,6 +304,7 @@ const buildDungeon = ({ width, height, roomCount, seed, mode }) => {
   const roomFloors = new Set()
   rooms.forEach((room) => carveRoom(grid, room, roomFloors))
   applyCorridors(grid, rooms, roomFloors)
+  widenCorridors(grid, roomFloors)
 
   const playerStart = roomCenter(rooms[0])
   let exitRoomIndex = 0

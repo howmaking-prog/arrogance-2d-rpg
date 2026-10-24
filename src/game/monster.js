@@ -1,3 +1,5 @@
+import { drawSlashArc, lungeOffset, slashFrame, SLASH_ROWS } from './combat/strikePose.js'
+
 const FRAME_SIZE = 64
 const SPRITE_SCALE = 2
 const IDLE_ROW = 10
@@ -52,22 +54,30 @@ export const createGoblin = (canvas, position) => {
       goblin.x = clamp(goblin.x, 48, Math.max(48, canvas.width - 48))
       goblin.y = clamp(goblin.y, 72, Math.max(72, canvas.height - 48))
     },
-    draw: (ctx, flash) => {
+    draw: (ctx, flash, attack, facing = 'down') => {
       if (!ready || !alive) {
         return
       }
+      const pose = attack
+        ? {
+          frame: slashFrame(attack.age, attack.life),
+          row: SLASH_ROWS[facing] || SLASH_ROWS.down,
+          offset: lungeOffset(facing, attack.age, attack.life),
+        }
+        : null
       const size = FRAME_SIZE * SPRITE_SCALE
-      const destX = goblin.x - FOOT_OFFSET_X * SPRITE_SCALE
-      const destY = goblin.y - FOOT_OFFSET_Y * SPRITE_SCALE
+      const shift = pose ? pose.offset : { x: 0, y: 0 }
+      const destX = goblin.x - FOOT_OFFSET_X * SPRITE_SCALE + shift.x
+      const destY = goblin.y - FOOT_OFFSET_Y * SPRITE_SCALE + shift.y
       ctx.fillStyle = 'rgba(0, 0, 0, 0.28)'
       ctx.beginPath()
-      ctx.ellipse(goblin.x, goblin.y, 16, 6, 0, 0, Math.PI * 2)
+      ctx.ellipse(goblin.x + shift.x, goblin.y + shift.y, 16, 6, 0, 0, Math.PI * 2)
       ctx.fill()
       ctx.imageSmoothingEnabled = false
       ctx.drawImage(
         image,
-        0,
-        IDLE_ROW * FRAME_SIZE,
+        (pose ? pose.frame : 0) * FRAME_SIZE,
+        (pose ? pose.row : IDLE_ROW) * FRAME_SIZE,
         FRAME_SIZE,
         FRAME_SIZE,
         destX,
@@ -75,6 +85,9 @@ export const createGoblin = (canvas, position) => {
         size,
         size,
       )
+      if (pose) {
+        drawSlashArc(ctx, goblin.x, goblin.y, facing, attack.age, attack.life, attack.crit)
+      }
       if (flash) {
         ctx.fillStyle = flash === 'crit' ? 'rgba(255, 64, 48, 0.5)' : 'rgba(255, 255, 255, 0.55)'
         ctx.fillRect(destX, destY, size, size)

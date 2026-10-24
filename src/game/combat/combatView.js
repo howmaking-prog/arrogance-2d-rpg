@@ -88,9 +88,10 @@ export const createCombatView = ({ onSkill, onNextFloor, onRestart }) => {
         return
       }
       title.textContent = '승리'
-      body.textContent = `경험치 ${reward.exp}, 골드 ${reward.gold}을 얻었다.`
+      body.textContent = `경험치 ${reward.exp}, 골드 ${reward.gold}을 얻었다. 이 층에 남는다.`
       if (nextButton instanceof HTMLElement) {
         nextButton.hidden = false
+        nextButton.textContent = '확인'
       }
       if (restartButton instanceof HTMLElement) {
         restartButton.hidden = true

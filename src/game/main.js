@@ -1,12 +1,13 @@
-import { createCombatManager } from './combat/combat.js?v=15'
-import { createCombatView } from './combat/combatView.js?v=15'
+import { createCombatManager } from './combat/combat.js?v=17'
+import { createCombatView } from './combat/combatView.js?v=17'
 import { createGoblinProfile } from './combat/monsterStats.js?v=15'
-import { createDungeonLayout } from './dungeon/layout.js?v=16'
-import { drawTowerFloor } from './floor.js?v=16'
+import { createHitSounds } from './combat/sfx.js?v=17'
+import { createDungeonLayout } from './dungeon/layout.js?v=18'
+import { drawTowerFloor } from './floor.js?v=18'
 import { createHud } from './hud.js?v=10'
 import { createFieldItems } from './items.js?v=10'
-import { createGoblin } from './monster.js?v=15'
-import { createPlayer, toCanvasPoint } from './player.js?v=16'
+import { createGoblin } from './monster.js?v=17'
+import { createPlayer, toCanvasPoint } from './player.js?v=17'
 import { drawStairs, stairAtPoint, stairsFromLayout } from './stairs.js?v=14'
 import { createStatProgression } from './stats/progression.js?v=10'
 import { createStatSheet } from './stats/statSheet.js?v=10'
@@ -78,6 +79,24 @@ const startGame = () => {
     let holdStairs = false
     let vitals = null
     const wallet = { exp: 0, gold: 0 }
+    const sounds = createHitSounds()
+    let heardSwing = 0
+    const playNewStrikes = (state) => {
+      state.swings.forEach((swing) => {
+        if (swing.id > heardSwing) {
+          sounds.playStrike(swing.who, swing.crit)
+        }
+      })
+      heardSwing = state.swings.reduce((latest, swing) => Math.max(latest, swing.id), heardSwing)
+    }
+    const facingBetween = (from, to) => {
+      const dx = to.x - from.x
+      const dy = to.y - from.y
+      if (Math.abs(dx) > Math.abs(dy)) {
+        return dx < 0 ? 'left' : 'right'
+      }
+      return dy < 0 ? 'up' : 'down'
+    }
     const combat = createCombatManager({
       getPlayer: () => {
         const state = progression.getState()
@@ -229,7 +248,9 @@ const startGame = () => {
         combatView.setOpen(false)
         vitals = combat.end()
         goblin.defeat()
-        changeFloor('up')
+        if (stairAtPoint(currentStairs(), actor.getPosition())) {
+          holdStairs = true
+        }
       },
       onRestart: () => {
         window.location.reload()
@@ -246,11 +267,13 @@ const startGame = () => {
       drawStairs(ctx, currentStairs())
       items.draw(ctx)
       const state = combat.getSnapshot()
-      goblin.draw(ctx, state.monsterFlash)
+      const playerPoint = actor.getPosition()
+      const monsterPoint = goblin.getPosition()
+      const monsterSwing = state.swings.find((item) => item.who === 'monster')
+      goblin.draw(ctx, state.monsterFlash, monsterSwing, facingBetween(monsterPoint, playerPoint))
       if (actor.isReady()) {
-        actor.draw(ctx, items.getEquippedWeapon(), state.playerFlash)
-        const playerPoint = actor.getPosition()
-        const monsterPoint = goblin.getPosition()
+        const playerSwing = state.swings.find((item) => item.who === 'player')
+        actor.draw(ctx, items.getEquippedWeapon(), state.playerFlash, playerSwing)
         combatView.drawFloats(ctx, state.floats.map((item) => ({
           ...item,
           x: item.target === 'monster' ? monsterPoint.x : playerPoint.x,
@@ -286,6 +309,7 @@ const startGame = () => {
           return
         }
 
+        sounds.unlock()
         const point = toWorldPoint(event)
         clearTimeout(clickTimer)
         if (combat.isBusy() || canOpenChest(point) || canTakeSword(point)) {
@@ -346,7 +370,14 @@ const startGame = () => {
         } else if (combat.isFighting()) {
           combat.update(dt)
           applyCombatResult(combat.takeResult())
-          combatView.sync(dt, combat.getSnapshot())
+          const state = combat.getSnapshot()
+          playNewStrikes(state)
+          combatView.sync(dt, state)
+        } else if (combat.isBusy()) {
+          combat.update(dt)
+          const state = combat.getSnapshot()
+          playNewStrikes(state)
+          combatView.sync(dt, state)
         } else {
           combatView.sync(dt, combat.getSnapshot())
         }

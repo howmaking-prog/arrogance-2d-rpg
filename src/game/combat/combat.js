@@ -1,5 +1,6 @@
 import { calculateDamage } from '../stats/damage.js'
 import { skillById } from './skills.js'
+import { SLASH_TIME } from './strikePose.js'
 
 const MIN_ATTACK_SPEED = 0.1
 const FLOAT_LIFE = 0.75
@@ -30,16 +31,19 @@ export const createCombatManager = ({ getPlayer, random = Math.random } = {}) =>
   let pendingResult = null
   let playerFlash = 0
   let monsterFlash = 0
+  let swingSerial = 0
   const floats = []
+  const swings = []
 
   const snapshot = () => ({
     status,
     reward,
     player: player ? { ...player } : null,
     monster: monster ? { ...monster } : null,
-    playerFlash: playerFlash > 0 ? player.flashKind : null,
-    monsterFlash: monsterFlash > 0 ? monster.flashKind : null,
+    playerFlash: playerFlash > 0 && player ? player.flashKind : null,
+    monsterFlash: monsterFlash > 0 && monster ? monster.flashKind : null,
     floats: floats.map((item) => ({ ...item })),
+    swings: swings.map((item) => ({ ...item })),
   })
 
   const pushFloat = (target, damage, crit) => {
@@ -64,6 +68,14 @@ export const createCombatManager = ({ getPlayer, random = Math.random } = {}) =>
         monsterFlash = FLASH_TIME
       }
       pushFloat(targetName, damage, crit)
+      swingSerial += 1
+      swings.push({
+        id: swingSerial,
+        who: targetName === 'player' ? 'monster' : 'player',
+        crit,
+        age: 0,
+        life: SLASH_TIME,
+      })
       return { damage, crit }
     } catch (error) {
       console.error('전투 피해 계산 실패', error)
@@ -104,6 +116,7 @@ export const createCombatManager = ({ getPlayer, random = Math.random } = {}) =>
         playerFlash = 0
         monsterFlash = 0
         floats.length = 0
+        swings.length = 0
         return snapshot()
       } catch (error) {
         console.error('전투 시작 실패', error)
@@ -114,10 +127,27 @@ export const createCombatManager = ({ getPlayer, random = Math.random } = {}) =>
     isFighting: () => status === 'fighting',
     isBusy: () => status === 'fighting' || status === 'victory' || status === 'defeat',
     update: (dt) => {
-      if (status !== 'fighting' || !Number.isFinite(dt) || dt < 0) {
+      if (status === 'idle' || !player || !Number.isFinite(dt) || dt < 0) {
         return snapshot()
       }
       try {
+        playerFlash = Math.max(0, playerFlash - dt)
+        monsterFlash = Math.max(0, monsterFlash - dt)
+        for (let index = floats.length - 1; index >= 0; index -= 1) {
+          floats[index].age += dt
+          if (floats[index].age >= floats[index].life) {
+            floats.splice(index, 1)
+          }
+        }
+        for (let index = swings.length - 1; index >= 0; index -= 1) {
+          swings[index].age += dt
+          if (swings[index].age >= swings[index].life) {
+            swings.splice(index, 1)
+          }
+        }
+        if (status !== 'fighting') {
+          return snapshot()
+        }
         const stats = getPlayer()
         player.maxHp = stats.maxHp
         player.maxMp = stats.maxMp
@@ -130,25 +160,17 @@ export const createCombatManager = ({ getPlayer, random = Math.random } = {}) =>
 
         player.cooldown += dt
         monster.cooldown += dt
-        playerFlash = Math.max(0, playerFlash - dt)
-        monsterFlash = Math.max(0, monsterFlash - dt)
-        for (let index = floats.length - 1; index >= 0; index -= 1) {
-          floats[index].age += dt
-          if (floats[index].age >= floats[index].life) {
-            floats.splice(index, 1)
-          }
-        }
-        let swings = 0
-        while (status === 'fighting' && player.cooldown >= attackInterval(player.attackSpeed) && swings < MAX_SWINGS_PER_TICK) {
+        let swingCount = 0
+        while (status === 'fighting' && player.cooldown >= attackInterval(player.attackSpeed) && swingCount < MAX_SWINGS_PER_TICK) {
           player.cooldown -= attackInterval(player.attackSpeed)
           swing(player, monster, 'monster', 1)
-          swings += 1
+          swingCount += 1
         }
-        swings = 0
-        while (status === 'fighting' && monster.cooldown >= attackInterval(monster.attackSpeed) && swings < MAX_SWINGS_PER_TICK) {
+        swingCount = 0
+        while (status === 'fighting' && monster.cooldown >= attackInterval(monster.attackSpeed) && swingCount < MAX_SWINGS_PER_TICK) {
           monster.cooldown -= attackInterval(monster.attackSpeed)
           swing(monster, player, 'player', 1)
-          swings += 1
+          swingCount += 1
         }
       } catch (error) {
         console.error('전투 진행 실패', error)
@@ -189,6 +211,7 @@ export const createCombatManager = ({ getPlayer, random = Math.random } = {}) =>
       reward = null
       pendingResult = null
       floats.length = 0
+      swings.length = 0
       return vitals
     },
     getSnapshot: snapshot,

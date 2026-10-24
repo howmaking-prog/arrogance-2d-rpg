@@ -35,6 +35,7 @@ describe('자동 전투', () => {
     const after = combat.getSnapshot()
     expect(after.monster.hp).toBe(84)
     expect(after.floats.some((item) => item.text === '16' && item.target === 'monster')).toBe(true)
+    expect(after.swings.some((item) => item.who === 'player')).toBe(true)
   })
 
   test('치명타는 방어를 뺀 피해의 1.5배다', () => {

@@ -1,6 +1,6 @@
-import { generateDungeon } from './generator.js?v=16'
+import { generateDungeon } from './generator.js?v=17'
 import { cameraFor, pickUpStairTile, roomCountForWorld, WORLD_COLUMNS, WORLD_ROWS, WORLD_TILE_SIZE, worldPixelSize } from './world.js?v=16'
-import { modeForFloor, themeForMode } from './themes.js?v=16'
+import { modeForFloor, themeForMode } from './themes.js?v=17'
 import { TILE } from './tiles.js?v=16'
 
 const NEIGHBORS = [

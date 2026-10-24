@@ -1,9 +1,8 @@
-import { createTilemapRenderer } from './dungeon/tilemap.js?v=16'
+import { paintDungeon } from './dungeon/scenery.js?v=18'
 
 const VOID_COLOR = '#070604'
 
 let floorCache = null
-const renderer = createTilemapRenderer()
 
 const paintFloor = (layout) => {
   const surface = document.createElement('canvas')
@@ -13,22 +12,16 @@ const paintFloor = (layout) => {
   if (!layer) {
     throw new Error('바닥 버퍼를 만들 수 없습니다.')
   }
-  layer.fillStyle = VOID_COLOR
+  layer.fillStyle = layout.theme?.voidColor || VOID_COLOR
   layer.fillRect(0, 0, layout.worldWidth, layout.worldHeight)
   layer.imageSmoothingEnabled = false
-  renderer.draw(layer, layout)
+  paintDungeon(layer, layout)
   return surface
 }
 
 // 넓은 층 전체를 한 번 그려 두고, 카메라는 호출하는 쪽에서 움직인다.
 export const drawTowerFloor = (ctx, layout) => {
   try {
-    renderer.useMode(layout.mode).catch((error) => {
-      console.error('타일셋 준비 실패', error)
-    })
-    if (!renderer.isReady()) {
-      return
-    }
     if (
       !floorCache
       || floorCache.floor !== layout.floor

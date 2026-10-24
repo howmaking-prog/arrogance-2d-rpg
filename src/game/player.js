@@ -1,3 +1,5 @@
+import { drawSlashArc, lungeOffset, slashFrame, SLASH_ROWS } from './combat/strikePose.js'
+
 // LPC 표준 칸 크기. 걷기 9프레임은 위, 왼쪽, 아래, 오른쪽 순으로 8~11행에 있다.
 const FRAME_SIZE = 64
 const SPRITE_SCALE = 2
@@ -47,7 +49,7 @@ const directionFromDelta = (dx, dy) => {
 }
 
 // 클릭 지점과 LPC 스프라이트의 현재 걷기 프레임을 그린다.
-const drawActor = (ctx, sprite, player, target, moving, weaponImage, flash) => {
+const drawActor = (ctx, sprite, player, target, moving, weaponImage, flash, attack) => {
   if (moving) {
     ctx.strokeStyle = 'rgba(255, 248, 214, 0.85)'
     ctx.lineWidth = 2
@@ -56,19 +58,27 @@ const drawActor = (ctx, sprite, player, target, moving, weaponImage, flash) => {
     ctx.stroke()
   }
 
+  const pose = attack
+    ? {
+      frame: slashFrame(attack.age, attack.life),
+      row: SLASH_ROWS[player.direction],
+      offset: lungeOffset(player.direction, attack.age, attack.life),
+    }
+    : null
+  const row = pose ? pose.row : WALK_ROWS[player.direction]
+  const frame = pose ? pose.frame : player.frame
+  const shift = pose ? pose.offset : { x: 0, y: 0 }
+  const size = FRAME_SIZE * SPRITE_SCALE
+  const destX = player.x - FOOT_OFFSET_X * SPRITE_SCALE + shift.x
+  const destY = player.y - FOOT_OFFSET_Y * SPRITE_SCALE + shift.y
   ctx.fillStyle = 'rgba(0, 0, 0, 0.28)'
   ctx.beginPath()
-  ctx.ellipse(player.x, player.y, 16, 6, 0, 0, Math.PI * 2)
+  ctx.ellipse(player.x + shift.x, player.y + shift.y, 16, 6, 0, 0, Math.PI * 2)
   ctx.fill()
-
-  const row = WALK_ROWS[player.direction]
-  const size = FRAME_SIZE * SPRITE_SCALE
-  const destX = player.x - FOOT_OFFSET_X * SPRITE_SCALE
-  const destY = player.y - FOOT_OFFSET_Y * SPRITE_SCALE
   ctx.imageSmoothingEnabled = false
   ctx.drawImage(
     sprite,
-    player.frame * FRAME_SIZE,
+    frame * FRAME_SIZE,
     row * FRAME_SIZE,
     FRAME_SIZE,
     FRAME_SIZE,
@@ -82,7 +92,7 @@ const drawActor = (ctx, sprite, player, target, moving, weaponImage, flash) => {
   if (weaponImage) {
     ctx.drawImage(
       weaponImage,
-      player.frame * FRAME_SIZE,
+      frame * FRAME_SIZE,
       row * FRAME_SIZE,
       FRAME_SIZE,
       FRAME_SIZE,
@@ -91,6 +101,9 @@ const drawActor = (ctx, sprite, player, target, moving, weaponImage, flash) => {
       size,
       size,
     )
+  }
+  if (pose) {
+    drawSlashArc(ctx, player.x, player.y, player.direction, attack.age, attack.life, attack.crit)
   }
   if (!flash) {
     return
@@ -260,6 +273,6 @@ export const createPlayer = (canvas) => {
       target.y = player.y
       stopWalking()
     },
-    draw: (ctx, weaponImage, flash) => drawActor(ctx, sprite, player, target, moving, weaponImage, flash),
+    draw: (ctx, weaponImage, flash, attack) => drawActor(ctx, sprite, player, target, moving, weaponImage, flash, attack),
   }
 }
