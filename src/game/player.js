@@ -13,6 +13,22 @@ const DIRECTION_LABEL = { up: '위', left: '왼쪽', down: '아래', right: '오
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value))
 
+// 발이 화면 안에 남는 범위. 낮은 창에서는 위쪽 여백을 줄여 방이 잘리지 않게 한다.
+export const playerFootBounds = (canvas) => {
+  const side = Math.min(FOOT_OFFSET_X * SPRITE_SCALE, Math.max(16, Math.floor(canvas.width * 0.08)))
+  const preferredTop = FOOT_OFFSET_Y * SPRITE_SCALE
+  const top = canvas.height < preferredTop * 2
+    ? Math.max(16, Math.floor(canvas.height * 0.16))
+    : preferredTop
+  const bottom = (FRAME_SIZE - FOOT_OFFSET_Y) * SPRITE_SCALE
+  return {
+    minX: side,
+    maxX: Math.max(side + 1, canvas.width - side),
+    minY: top,
+    maxY: Math.max(top + 1, canvas.height - bottom),
+  }
+}
+
 // 화면 좌표를 캔버스 내부 좌표로 바꾼다.
 export const toCanvasPoint = (canvas, event) => {
   const rect = canvas.getBoundingClientRect()
@@ -92,6 +108,18 @@ export const createPlayer = (canvas) => {
   let moving = false
   let spriteReady = false
   let spriteFailed = false
+  let isBlocked = () => false
+
+  const footBounds = () => playerFootBounds(canvas)
+
+  const blockedAt = (x, y) => {
+    try {
+      return Boolean(isBlocked(x, y))
+    } catch (error) {
+      console.error('이동 충돌 확인 실패', error)
+      return false
+    }
+  }
 
   const sprite = new Image()
   sprite.addEventListener('load', () => {
@@ -137,8 +165,10 @@ export const createPlayer = (canvas) => {
     const distance = Math.hypot(dx, dy)
 
     if (distance <= ARRIVE_DISTANCE) {
-      player.x = target.x
-      player.y = target.y
+      if (!blockedAt(target.x, target.y)) {
+        player.x = target.x
+        player.y = target.y
+      }
       stopWalking()
       printStatus('도착')
       return
@@ -146,11 +176,29 @@ export const createPlayer = (canvas) => {
 
     player.direction = directionFromDelta(dx, dy)
     const step = Math.min(MOVE_SPEED * dt, distance)
-    player.x += (dx / distance) * step
-    player.y += (dy / distance) * step
+    const nextX = player.x + (dx / distance) * step
+    const nextY = player.y + (dy / distance) * step
+    let movedX = player.x
+    let movedY = player.y
+    if (!blockedAt(nextX, nextY)) {
+      movedX = nextX
+      movedY = nextY
+    } else if (!blockedAt(nextX, player.y)) {
+      movedX = nextX
+    } else if (!blockedAt(player.x, nextY)) {
+      movedY = nextY
+    }
+    if (movedX === player.x && movedY === player.y) {
+      stopWalking()
+      printStatus('길 막힘')
+      return
+    }
+    const moved = Math.hypot(movedX - player.x, movedY - player.y)
+    player.x = movedX
+    player.y = movedY
 
     // 이동 거리에 맞춰 걷기 프레임을 넘겨, 발걸음과 속도가 어긋나지 않게 한다.
-    player.stepCarry += step
+    player.stepCarry += moved
     const advances = Math.floor(player.stepCarry / STEP_DISTANCE)
     if (advances > 0) {
       player.frame = (player.frame + advances) % WALK_FRAMES
@@ -159,11 +207,9 @@ export const createPlayer = (canvas) => {
   }
 
   const beginMove = (point) => {
-    const halfWidth = FOOT_OFFSET_X * SPRITE_SCALE
-    const topMargin = FOOT_OFFSET_Y * SPRITE_SCALE
-    const bottomMargin = (FRAME_SIZE - FOOT_OFFSET_Y) * SPRITE_SCALE
-    target.x = clamp(point.x, halfWidth, canvas.width - halfWidth)
-    target.y = clamp(point.y, topMargin, canvas.height - bottomMargin)
+    const bounds = footBounds()
+    target.x = clamp(point.x, bounds.minX, bounds.maxX)
+    target.y = clamp(point.y, bounds.minY, bounds.maxY)
 
     const distance = Math.hypot(target.x - player.x, target.y - player.y)
     if (distance <= ARRIVE_DISTANCE) {
@@ -178,10 +224,11 @@ export const createPlayer = (canvas) => {
   }
 
   const keepInside = () => {
-    player.x = clamp(player.x, 48, Math.max(48, canvas.width - 48))
-    player.y = clamp(player.y, 72, Math.max(72, canvas.height - 48))
-    target.x = clamp(target.x, 48, Math.max(48, canvas.width - 48))
-    target.y = clamp(target.y, 72, Math.max(72, canvas.height - 48))
+    const bounds = footBounds()
+    player.x = clamp(player.x, bounds.minX, bounds.maxX)
+    player.y = clamp(player.y, bounds.minY, bounds.maxY)
+    target.x = clamp(target.x, bounds.minX, bounds.maxX)
+    target.y = clamp(target.y, bounds.minY, bounds.maxY)
   }
 
   return {
@@ -192,12 +239,13 @@ export const createPlayer = (canvas) => {
     isReady: () => spriteReady,
     hasFailed: () => spriteFailed,
     getPosition: () => ({ x: player.x, y: player.y }),
+    setBlocked: (fn) => {
+      isBlocked = typeof fn === 'function' ? fn : () => false
+    },
     placeAt: (point) => {
-      const halfWidth = FOOT_OFFSET_X * SPRITE_SCALE
-      const topMargin = FOOT_OFFSET_Y * SPRITE_SCALE
-      const bottomMargin = (FRAME_SIZE - FOOT_OFFSET_Y) * SPRITE_SCALE
-      player.x = clamp(point.x, halfWidth, canvas.width - halfWidth)
-      player.y = clamp(point.y, topMargin, canvas.height - bottomMargin)
+      const bounds = footBounds()
+      player.x = clamp(point.x, bounds.minX, bounds.maxX)
+      player.y = clamp(point.y, bounds.minY, bounds.maxY)
       target.x = player.x
       target.y = player.y
       stopWalking()

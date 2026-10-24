@@ -1,60 +1,16 @@
+import { createDungeonLayout } from './dungeon/layout.js?v=13'
+import { drawTowerFloor } from './floor.js?v=13'
+import { createHud } from './hud.js?v=12'
+import { createFieldItems } from './items.js?v=12'
+import { createMonsters } from './monster.js?v=13'
+import { createPlayer, playerFootBounds, toCanvasPoint } from './player.js?v=13'
+import { drawStairs, stairAtPoint, stairsFromLayout } from './stairs.js?v=13'
 import { createStatProgression } from './stats/progression.js?v=10'
 import { createStatSheet } from './stats/statSheet.js?v=10'
-import { drawTowerFloor } from './floor.js?v=12'
-import { createFieldItems } from './items.js?v=12'
-import { createHud } from './hud.js?v=12'
-import { createGoblin } from './monster.js?v=12'
-import { createPlayer, toCanvasPoint } from './player.js?v=10'
-import { drawStairs, stairAtPoint, stairSpots } from './stairs.js?v=10'
 
 const CLICK_DELAY = 220
-const FIELD_MARGIN_X = 96
-const FIELD_MARGIN_TOP = 180
-const FIELD_MARGIN_BOTTOM = 160
-const START_X = 156
-const START_BOTTOM = 150
-const SPAWN_GAP = 180
-const ARRIVAL_OFFSET = 140
 
-// 플레이어, 계단과 떨어진 필드 좌표를 고른다.
-const randomFieldPoint = (canvas, blocked) => {
-  const minX = FIELD_MARGIN_X
-  const maxX = Math.max(minX + 1, canvas.width - FIELD_MARGIN_X)
-  const minY = FIELD_MARGIN_TOP
-  const maxY = Math.max(minY + 1, canvas.height - FIELD_MARGIN_BOTTOM)
-
-  for (let attempt = 0; attempt < 40; attempt += 1) {
-    const point = {
-      x: minX + Math.random() * (maxX - minX),
-      y: minY + Math.random() * (maxY - minY),
-    }
-    const separated = blocked.every((other) => Math.hypot(point.x - other.x, point.y - other.y) >= SPAWN_GAP)
-    const underTitle = point.x < 280 && point.y < 80
-    if (separated && !underTitle) {
-      return point
-    }
-  }
-
-  return {
-    x: (minX + maxX) / 2,
-    y: (minY + maxY) / 2,
-  }
-}
-
-// 올라온 층은 아래 계단 옆, 내려온 층은 위 계단 옆에 세운다.
-const arrivalPoint = (canvas, floor, via) => {
-  const spots = stairSpots(canvas, floor)
-  const up = spots.find((stair) => stair.direction === 'up')
-  const down = spots.find((stair) => stair.direction === 'down')
-
-  if (via === 'up' && down) {
-    return { x: down.x + ARRIVAL_OFFSET, y: down.y }
-  }
-  if (via === 'down' && up) {
-    return { x: up.x - ARRIVAL_OFFSET, y: up.y + 80 }
-  }
-  return { x: canvas.width / 2, y: canvas.height / 2 }
-}
+const randomSeed = () => 1 + Math.floor(Math.random() * 1000000)
 
 const startGame = () => {
   try {
@@ -85,15 +41,21 @@ const startGame = () => {
     fitCanvas()
 
     let floor = 1
+    let dungeonSeed = randomSeed()
     const floors = new Map()
     const actor = createPlayer(canvas)
-    actor.placeAt({ x: START_X, y: canvas.height - START_BOTTOM })
+    let layout = createDungeonLayout({
+      width: canvas.width,
+      height: canvas.height,
+      floor,
+      seed: dungeonSeed,
+      bounds: playerFootBounds(canvas),
+    })
+    actor.setBlocked((x, y) => !layout.isWalkable(x, y))
+    actor.placeAt(layout.playerStart)
     createHud()
-    const opening = stairSpots(canvas, floor)
-    const chestSpot = randomFieldPoint(canvas, [actor.getPosition(), ...opening])
-    const goblinSpot = randomFieldPoint(canvas, [actor.getPosition(), chestSpot, ...opening])
-    const items = createFieldItems(canvas, chestSpot)
-    const goblin = createGoblin(canvas, goblinSpot)
+    const items = createFieldItems(canvas, layout.chest)
+    const monsters = createMonsters(canvas, layout.monsters)
     const progression = createStatProgression()
     const statSheet = createStatSheet(progression, () => ({
       weaponAtk: items.getEquippedAttack(),
@@ -105,13 +67,28 @@ const startGame = () => {
     let pointer = null
     let holdStairs = false
 
+    const currentStairs = () => stairsFromLayout(layout, floor)
+
     const showFloor = () => {
       const label = `오만의 탑 ${floor}층`
       if (floorTitle instanceof HTMLElement) {
         floorTitle.textContent = label
       }
       canvas.setAttribute('aria-label', label)
-      console.log(`[상태] ${label}`)
+      console.log(`[상태] ${label} | ${layout.theme.label}`)
+    }
+
+    // 같은 시드로 방과 복도를 다시 만들고, 발밑이 벽이면 막는다.
+    const rebuildLayout = (seed) => {
+      dungeonSeed = seed
+      layout = createDungeonLayout({
+        width: canvas.width,
+        height: canvas.height,
+        floor,
+        seed: dungeonSeed,
+        bounds: playerFootBounds(canvas),
+      })
+      actor.setBlocked((x, y) => !layout.isWalkable(x, y))
     }
 
     const canOpenChest = (point) => items.hitChest(point) && items.isChestInReach(actor.getPosition())
@@ -124,7 +101,7 @@ const startGame = () => {
 
     // 발밑이 계단 칸에 들어오면 더블클릭 없이 위층이나 아래층으로 옮긴다.
     const stepOntoStairs = () => {
-      const stood = stairAtPoint(stairSpots(canvas, floor), actor.getPosition())
+      const stood = stairAtPoint(currentStairs(), actor.getPosition())
       if (holdStairs) {
         if (!stood) {
           holdStairs = false
@@ -138,7 +115,7 @@ const startGame = () => {
       changeFloor(stood.direction)
     }
 
-    // 방문한 층은 그대로 두고, 처음 가는 층만 새로 배치한다.
+    // 방문한 층은 같은 시드로 되돌리고, 처음 가는 층만 새로 만든다.
     const changeFloor = (direction) => {
       const nextFloor = direction === 'up' ? floor + 1 : floor - 1
       if (nextFloor < 1) {
@@ -147,31 +124,30 @@ const startGame = () => {
 
       floors.set(floor, {
         items: items.captureFloor(),
-        goblin: goblin.capture(),
+        monsters: monsters.capture(),
+        goblin: monsters.capture()[0] || null,
+        seed: dungeonSeed,
       })
       floor = nextFloor
 
-      const here = arrivalPoint(canvas, floor, direction)
       const saved = floors.get(floor)
       if (saved) {
+        rebuildLayout(saved.seed)
         items.applyFloor(saved.items)
-        goblin.place(saved.goblin)
+        monsters.placeAll(saved.monsters)
       } else {
-        const spots = stairSpots(canvas, floor)
-        const nextChest = randomFieldPoint(canvas, [here, ...spots])
-        const nextGoblin = randomFieldPoint(canvas, [here, nextChest, ...spots])
+        rebuildLayout(randomSeed())
         items.applyFloor({
-          x: nextChest.x,
-          y: nextChest.y,
+          x: layout.chest.x,
+          y: layout.chest.y,
           open: false,
           droppedSword: null,
         })
-        goblin.place(nextGoblin)
+        monsters.placeAll(layout.monsters)
       }
 
-      items.keepInside()
-      goblin.keepInside()
-      actor.placeAt(here)
+      const here = direction === 'up' ? layout.playerStart : layout.exitApproach
+      actor.placeAt(layout.nearestWalkable(here))
       if (direction === 'up') {
         try {
           const gained = progression.reachFloor(floor)
@@ -187,10 +163,10 @@ const startGame = () => {
     }
 
     const draw = () => {
-      drawTowerFloor(ctx, canvas.width, canvas.height, floor)
-      drawStairs(ctx, stairSpots(canvas, floor))
+      drawTowerFloor(ctx, canvas.width, canvas.height, layout)
+      drawStairs(ctx, currentStairs())
       items.draw(ctx)
-      goblin.draw(ctx)
+      monsters.draw(ctx)
       if (!actor.isReady()) {
         ctx.fillStyle = '#e8f0e4'
         ctx.font = '16px sans-serif'
@@ -276,9 +252,16 @@ const startGame = () => {
         if (!fitCanvas()) {
           return
         }
-        actor.keepInside()
-        items.keepInside()
-        goblin.keepInside()
+        const savedItems = items.captureFloor()
+        rebuildLayout(dungeonSeed)
+        items.applyFloor({
+          ...savedItems,
+          x: layout.chest.x,
+          y: layout.chest.y,
+          droppedSword: savedItems.droppedSword ? layout.nearestWalkable(savedItems.droppedSword) : null,
+        })
+        monsters.placeAll(layout.monsters)
+        actor.placeAt(layout.nearestWalkable(actor.getPosition()))
       } catch (error) {
         console.error('화면 크기 조정 실패', error)
       }
