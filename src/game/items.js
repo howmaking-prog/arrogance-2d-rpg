@@ -1,8 +1,8 @@
 import { BRASS_SWORD_ATK } from './stats/constants.js'
 
-// 보물상자 크기와, 플레이어가 손을 뻗을 수 있는 거리. 좌표는 상자 중심이다.
-const CHEST_WIDTH = 72
-const CHEST_HEIGHT = 52
+// 상자와 떨어진 아이템에 손을 뻗을 수 있는 거리. 좌표는 중심이다.
+const CHEST_WIDTH = 88
+const CHEST_HEIGHT = 68
 const CHEST_REACH = 120
 
 // 걷기 아래 방향 첫 칸에 있는 놋쇠검만 잘라 바닥 아이템으로 쓴다.
@@ -23,43 +23,73 @@ const containsPoint = (point, centerX, centerY, width, height) => (
   && Math.abs(point.y - centerY) <= height / 2
 )
 
-// 닫힌 상자는 뚜껑이 덮여 있고, 열리면 안쪽과 젖혀진 뚜껑을 보여 준다.
+// 나무결과 쇠테, 자물쇠가 있는 상자를 그린다. 열리면 뚜껑이 뒤로 젖혀진다.
 const drawChest = (ctx, chest) => {
   const left = chest.x - chest.width / 2
   const top = chest.y - chest.height / 2
+  const bodyTop = top + 28
+  const bodyHeight = chest.height - 28
 
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.28)'
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.35)'
   ctx.beginPath()
-  ctx.ellipse(chest.x, top + chest.height - 4, 30, 8, 0, 0, Math.PI * 2)
+  ctx.ellipse(chest.x, top + chest.height - 2, chest.width * 0.42, 9, 0, 0, Math.PI * 2)
   ctx.fill()
 
-  ctx.fillStyle = '#8a5a2b'
-  ctx.fillRect(left, top + 20, chest.width, chest.height - 20)
-  ctx.fillStyle = '#d4b06a'
-  ctx.fillRect(left, top + 28, chest.width, 5)
-  ctx.fillRect(left, top + chest.height - 10, chest.width, 5)
-  ctx.fillStyle = '#f0d48a'
-  ctx.fillRect(chest.x - 5, top + 34, 10, 10)
+  const drawBody = () => {
+    ctx.fillStyle = '#6b3f22'
+    ctx.fillRect(left, bodyTop, chest.width, bodyHeight)
+    ctx.fillStyle = '#8a552c'
+    for (let plank = 0; plank < 4; plank += 1) {
+      const plankX = left + 8 + plank * ((chest.width - 16) / 4)
+      ctx.fillRect(plankX, bodyTop + 4, 3, bodyHeight - 8)
+    }
+    ctx.fillStyle = '#d7b15a'
+    ctx.fillRect(left, bodyTop + 8, chest.width, 5)
+    ctx.fillRect(left, bodyTop + bodyHeight - 10, chest.width, 5)
+    ctx.fillStyle = '#8d7340'
+    ctx.fillRect(left, bodyTop, 6, bodyHeight)
+    ctx.fillRect(left + chest.width - 6, bodyTop, 6, bodyHeight)
+  }
+
+  const drawLid = (lifted) => {
+    const lidTop = lifted ? top - 8 : top
+    const lidHeight = lifted ? 22 : 30
+    ctx.fillStyle = lifted ? '#4e311c' : '#5c3a22'
+    ctx.beginPath()
+    ctx.moveTo(left + 4, bodyTop)
+    ctx.quadraticCurveTo(chest.x, lidTop, left + chest.width - 4, bodyTop)
+    ctx.lineTo(left + chest.width - 8, bodyTop - (lifted ? 2 : 8))
+    ctx.quadraticCurveTo(chest.x, lidTop + lidHeight * 0.2, left + 8, bodyTop - (lifted ? 2 : 8))
+    ctx.closePath()
+    ctx.fill()
+    ctx.strokeStyle = '#d7b15a'
+    ctx.lineWidth = 3
+    ctx.beginPath()
+    ctx.moveTo(left + 10, bodyTop - 4)
+    ctx.quadraticCurveTo(chest.x, lidTop + 8, left + chest.width - 10, bodyTop - 4)
+    ctx.stroke()
+  }
 
   if (!chest.open) {
-    ctx.fillStyle = '#6b4424'
-    ctx.fillRect(left, top, chest.width, 24)
-    ctx.fillStyle = '#d4b06a'
-    ctx.fillRect(left, top + 10, chest.width, 4)
+    drawBody()
+    drawLid(false)
+    ctx.fillStyle = '#f0d48a'
+    ctx.fillRect(chest.x - 7, bodyTop - 2, 14, 16)
+    ctx.fillStyle = '#2a2118'
+    ctx.beginPath()
+    ctx.arc(chest.x, bodyTop + 8, 3, 0, Math.PI * 2)
+    ctx.fill()
     return
   }
 
-  ctx.fillStyle = '#2a2118'
-  ctx.fillRect(left + 6, top + 24, chest.width - 12, 16)
-  ctx.fillStyle = '#6b4424'
-  ctx.beginPath()
-  ctx.moveTo(left, top + 20)
-  ctx.lineTo(left + 10, top - 6)
-  ctx.lineTo(left + chest.width - 10, top - 6)
-  ctx.lineTo(left + chest.width, top + 20)
-  ctx.fill()
-  ctx.fillStyle = '#d4b06a'
-  ctx.fillRect(left + 10, top + 2, chest.width - 20, 4)
+  drawLid(true)
+  drawBody()
+  ctx.fillStyle = '#1a140f'
+  ctx.fillRect(left + 8, bodyTop + 4, chest.width - 16, 14)
+  ctx.fillStyle = '#e7c56a'
+  ctx.fillRect(chest.x - 4, bodyTop + 8, 8, 5)
+  ctx.fillStyle = '#f0d48a'
+  ctx.fillRect(chest.x - 7, bodyTop + 16, 14, 10)
 }
 
 const drawDroppedSword = (ctx, image, item) => {
@@ -278,6 +308,12 @@ export const createFieldItems = (canvas, position) => {
     },
     hitChest: (point) => containsPoint(point, chest.x, chest.y, chest.width, chest.height),
     isChestInReach: (playerPoint) => Math.hypot(playerPoint.x - chest.x, playerPoint.y - chest.y) <= CHEST_REACH,
+    isSwordInReach: (playerPoint) => {
+      if (!droppedSword) {
+        return false
+      }
+      return Math.hypot(playerPoint.x - droppedSword.x, playerPoint.y - droppedSword.y) <= CHEST_REACH
+    },
     hitDroppedSword: (point) => {
       if (!droppedSword) {
         return false

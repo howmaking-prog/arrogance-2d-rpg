@@ -1,11 +1,11 @@
-import { createStatProgression } from './stats/progression.js?v=9'
-import { createStatSheet } from './stats/statSheet.js?v=9'
-import { drawTowerFloor } from './floor.js?v=9'
-import { createHud } from './hud.js?v=9'
-import { createFieldItems } from './items.js?v=9'
-import { createGoblin } from './monster.js?v=9'
-import { createPlayer, toCanvasPoint } from './player.js?v=9'
-import { STAIR_REACH, drawStairs, stairAtPoint, stairSpots } from './stairs.js?v=9'
+import { createStatProgression } from './stats/progression.js?v=10'
+import { createStatSheet } from './stats/statSheet.js?v=10'
+import { drawTowerFloor } from './floor.js?v=11'
+import { createHud } from './hud.js?v=10'
+import { createFieldItems } from './items.js?v=10'
+import { createGoblin } from './monster.js?v=10'
+import { createPlayer, toCanvasPoint } from './player.js?v=10'
+import { drawStairs, stairAtPoint, stairSpots } from './stairs.js?v=10'
 
 const CLICK_DELAY = 220
 const FIELD_MARGIN_X = 96
@@ -103,6 +103,7 @@ const startGame = () => {
     let clickTimer = null
     let lastTime = 0
     let pointer = null
+    let holdStairs = false
 
     const showFloor = () => {
       const label = `오만의 탑 ${floor}층`
@@ -113,21 +114,28 @@ const startGame = () => {
       console.log(`[상태] ${label}`)
     }
 
-    const usableStair = (point) => {
-      const stair = stairAtPoint(stairSpots(canvas, floor), point)
-      if (!stair) {
-        return null
-      }
-      const playerPoint = actor.getPosition()
-      const distance = Math.hypot(playerPoint.x - stair.x, playerPoint.y - stair.y)
-      return distance <= STAIR_REACH ? stair : null
-    }
-
     const canOpenChest = (point) => items.hitChest(point) && items.isChestInReach(actor.getPosition())
+    const canTakeSword = (point) => items.hitDroppedSword(point) && items.isSwordInReach(actor.getPosition())
 
     const refreshCursor = () => {
-      const interactive = Boolean(pointer && (canOpenChest(pointer) || usableStair(pointer)))
+      const interactive = Boolean(pointer && (canOpenChest(pointer) || canTakeSword(pointer)))
       canvas.style.cursor = interactive ? 'pointer' : 'crosshair'
+    }
+
+    // 발밑이 계단 칸에 들어오면 더블클릭 없이 위층이나 아래층으로 옮긴다.
+    const stepOntoStairs = () => {
+      const stood = stairAtPoint(stairSpots(canvas, floor), actor.getPosition())
+      if (holdStairs) {
+        if (!stood) {
+          holdStairs = false
+        }
+        return
+      }
+      if (!stood) {
+        return
+      }
+      holdStairs = true
+      changeFloor(stood.direction)
     }
 
     // 방문한 층은 그대로 두고, 처음 가는 층만 새로 배치한다.
@@ -215,7 +223,7 @@ const startGame = () => {
 
         const point = toCanvasPoint(canvas, event)
         clearTimeout(clickTimer)
-        if (canOpenChest(point) || usableStair(point)) {
+        if (canOpenChest(point) || canTakeSword(point)) {
           return
         }
 
@@ -235,17 +243,12 @@ const startGame = () => {
       try {
         clearTimeout(clickTimer)
         const point = toCanvasPoint(canvas, event)
-        if (items.hitDroppedSword(point)) {
+        if (canTakeSword(point)) {
           items.storeSword()
           return
         }
         if (canOpenChest(point)) {
           items.openChest()
-          return
-        }
-        const stair = usableStair(point)
-        if (stair) {
-          changeFloor(stair.direction)
           return
         }
         actor.beginMove(point)
@@ -259,6 +262,7 @@ const startGame = () => {
         const dt = lastTime === 0 ? 0 : Math.min((now - lastTime) / 1000, 0.05)
         lastTime = now
         actor.update(dt)
+        stepOntoStairs()
         refreshCursor()
         draw()
       } catch (error) {
