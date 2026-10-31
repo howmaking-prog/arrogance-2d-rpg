@@ -2,7 +2,8 @@ import { drawSlashArc, lungeOffset, slashFrame, SLASH_ROWS } from './combat/stri
 
 // LPC 표준 칸 크기. 걷기 9프레임은 위, 왼쪽, 아래, 오른쪽 순으로 8~11행에 있다.
 const FRAME_SIZE = 64
-const SPRITE_SCALE = 2
+// 배경 타일이 작아진 만큼 캐릭터도 한 칸에 맞게 줄인다.
+const SPRITE_SCALE = 1
 const WALK_FRAMES = 9
 const WALK_ROWS = { up: 8, left: 9, down: 10, right: 11 }
 const STEP_DISTANCE = 14

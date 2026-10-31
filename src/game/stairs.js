@@ -5,8 +5,8 @@ const UP_STAIR_X = 118
 const UP_STAIR_Y = 118
 const DOWN_STAIR_X = 124
 const DOWN_STAIR_Y = 108
-// 위층·아래층 입구는 한 칸이 아니라 약 네 칸 넓이로 그린다.
-export const STAIR_TILE_SPAN = 4
+// 위층·아래층 입구는 타일이 작아도 눈에 띄도록 여러 칸 넓이로 그린다.
+export const STAIR_TILE_SPAN = 8
 
 // 플레이어가 계단을 이용할 수 있는 거리
 export const STAIR_REACH = 120

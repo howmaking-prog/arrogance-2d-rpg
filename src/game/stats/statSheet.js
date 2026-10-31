@@ -59,7 +59,7 @@ export const createStatSheet = (progression, getGear) => {
           <p>공격 속도 ${formatValue(derived.attackSpeed)}</p>
           <p>치명타 ${formatValue(derived.critChancePercent)}%</p>
         </div>
-        <p class="stat-note">시작 포인트 50. 4층을 지날 때마다 1포인트. 힘·민첩·체력·지능과 남은 포인트의 합은 200을 넘지 않습니다.</p>
+        <p class="stat-note">시작 포인트 20. 4층을 지날 때마다 1포인트. 힘·민첩·체력·지능과 남은 포인트의 합은 200을 넘지 않습니다.</p>
       `
     } catch (error) {
       console.error('스탯 창 표시 실패', error)

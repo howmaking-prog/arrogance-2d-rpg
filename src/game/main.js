@@ -3,15 +3,15 @@ import { createCombatView } from './combat/combatView.js?v=23'
 import { createGoblinProfile } from './combat/monsterStats.js?v=15'
 import { createHitSounds } from './combat/sfx.js?v=17'
 import { skillById, skillHitMessage } from './combat/skills.js?v=23'
-import { createDungeonLayout } from './dungeon/layout.js?v=19'
-import { drawTowerFloor } from './floor.js?v=18'
+import { createDungeonLayout } from './dungeon/layout.js?v=24'
+import { drawTowerFloor } from './floor.js?v=24'
 import { createHud } from './hud.js?v=10'
 import { createFieldItems } from './items.js?v=23'
-import { createGoblinPack } from './monsterPack.js?v=20'
-import { createPlayer, toCanvasPoint } from './player.js?v=20'
-import { drawStairs, stairAtPoint, stairsFromLayout } from './stairs.js?v=19'
-import { createStatProgression } from './stats/progression.js?v=10'
-import { createStatSheet } from './stats/statSheet.js?v=10'
+import { createGoblinPack } from './monsterPack.js?v=24'
+import { createPlayer, toCanvasPoint } from './player.js?v=24'
+import { drawStairs, stairAtPoint, stairsFromLayout } from './stairs.js?v=24'
+import { createStatProgression } from './stats/progression.js?v=24'
+import { createStatSheet } from './stats/statSheet.js?v=24'
 import { createExpBar } from './ui/expBar.js?v=21'
 import { createMessageLog } from './ui/messageLog.js?v=21'
 
@@ -358,6 +358,8 @@ const startGame = () => {
       try {
         const dt = lastTime === 0 ? 0 : Math.min((now - lastTime) / 1000, 0.05)
         lastTime = now
+        // 전투 중이 아니면 순찰하고, 쓰러진 고블린은 항상 리젠 시간을 잰다.
+        goblins.update(dt, layout.isWalkable, combat.isBusy())
         if (!combat.isBusy()) {
           actor.update(dt)
           stepOntoStairs()

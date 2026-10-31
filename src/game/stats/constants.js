@@ -4,7 +4,7 @@ export const STAT_KEYS = ['str', 'agi', 'vit', 'int']
 export const PRIMARY_STATS = ['str', 'agi', 'int']
 
 // 시작 시 배분하는 보너스와, 기본값까지 포함한 스탯 합계 상한이다.
-export const STARTING_BONUS_POINTS = 50
+export const STARTING_BONUS_POINTS = 20
 export const STAT_POINT_CAP = 200
 export const FLOORS_PER_STAT_POINT = 4
 

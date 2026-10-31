@@ -49,11 +49,11 @@ describe('피해 계산', () => {
 })
 
 describe('스탯 성장', () => {
-  test('네 스탯은 10에서 시작하고 배분 포인트는 50이다', () => {
+  test('네 스탯은 10에서 시작하고 배분 포인트는 20이다', () => {
     const state = createStatProgression().getState()
     expect(state.stats).toEqual({ str: 10, agi: 10, vit: 10, int: 10 })
-    expect(state.unspent).toBe(50)
-    expect(state.ownedPoints).toBe(90)
+    expect(state.unspent).toBe(20)
+    expect(state.ownedPoints).toBe(60)
     expect(state.primaryStat).toBe('str')
   })
 
@@ -61,11 +61,11 @@ describe('스탯 성장', () => {
     const progression = createStatProgression()
     progression.allocate('str', 5)
     expect(progression.getState().stats.str).toBe(15)
-    expect(progression.getState().unspent).toBe(45)
+    expect(progression.getState().unspent).toBe(15)
     progression.allocate('str', -5)
     expect(progression.getState().stats.str).toBe(10)
     expect(() => progression.allocate('str', -1)).toThrow('기본 스탯')
-    expect(() => progression.allocate('str', 51)).toThrow('부족')
+    expect(() => progression.allocate('str', 21)).toThrow('부족')
   })
 
   test('무기 공격력은 계열 공격력에 더한다', () => {
@@ -82,13 +82,13 @@ describe('스탯 성장', () => {
     expect(progression.reachFloor(4).granted).toBe(0)
     expect(progression.reachFloor(5).granted).toBe(1)
     expect(progression.reachFloor(3).granted).toBe(0)
-    expect(progression.getState().unspent).toBe(51)
+    expect(progression.getState().unspent).toBe(21)
 
-    const capped = createStatProgression().reachFloor(1 + 110 * 4)
-    expect(capped.granted).toBe(110)
+    const capped = createStatProgression().reachFloor(1 + 140 * 4)
+    expect(capped.granted).toBe(140)
     expect(capped.ownedPoints).toBe(200)
     const blocked = createStatProgression()
-    blocked.reachFloor(1 + 110 * 4)
+    blocked.reachFloor(1 + 140 * 4)
     expect(blocked.reachFloor(blocked.getState().highestFloor + 4).granted).toBe(0)
     expect(blocked.getState().ownedPoints).toBe(200)
   })

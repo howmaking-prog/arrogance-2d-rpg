@@ -1,4 +1,4 @@
-import { createGoblin } from './monster.js?v=20'
+import { createGoblin } from './monster.js?v=24'
 
 const distance = (from, to) => Math.hypot(from.x - to.x, from.y - to.y)
 
@@ -12,7 +12,10 @@ export const createGoblinPack = (canvas, positions) => {
     unit: createGoblin(canvas, {
       x: position.x,
       y: position.y,
+      homeX: position.homeX ?? position.x,
+      homeY: position.homeY ?? position.y,
       alive: typeof position.alive === 'boolean' ? position.alive : true,
+      respawnLeft: position.respawnLeft || 0,
     }),
   }))
   let activeId = null
@@ -28,7 +31,10 @@ export const createGoblinPack = (canvas, positions) => {
           unit: createGoblin(canvas, {
             x: position.x,
             y: position.y,
+            homeX: position.homeX ?? position.x,
+            homeY: position.homeY ?? position.y,
             alive: typeof position.alive === 'boolean' ? position.alive : true,
+            respawnLeft: position.respawnLeft || 0,
           }),
         }))
         activeId = null
@@ -72,6 +78,12 @@ export const createGoblinPack = (canvas, positions) => {
       return foe ? foe.unit.getPosition() : null
     },
     aliveCount: () => foes.filter((foe) => foe.unit.isAlive()).length,
+    // 전투 중에는 순찰을 멈추고, 죽은 고블린만 리젠 시간을 잰다.
+    update: (dt, isWalkable, combatBusy) => {
+      foes.forEach((foe) => {
+        foe.unit.update(dt, isWalkable, !combatBusy)
+      })
+    },
     draw: (ctx, flash, attack, playerPoint) => {
       foes.forEach((foe) => {
         if (!foe.unit.isAlive()) {
@@ -84,7 +96,7 @@ export const createGoblinPack = (canvas, positions) => {
           ? (dx < 0 ? 'left' : 'right')
           : (dy < 0 ? 'up' : 'down')
         const fighting = foe.id === activeId
-        foe.unit.draw(ctx, fighting ? flash : null, fighting ? attack : null, facing)
+        foe.unit.draw(ctx, fighting ? flash : null, fighting ? attack : null, fighting ? facing : null)
       })
     },
   }

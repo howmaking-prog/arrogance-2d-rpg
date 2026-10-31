@@ -1,4 +1,4 @@
-import { paintDungeon } from './dungeon/scenery.js?v=18'
+import { paintDungeon } from './dungeon/scenery.js?v=24'
 
 const VOID_COLOR = '#070604'
 

@@ -9,6 +9,7 @@ describe('넓은 던전 월드', () => {
     expect(WORLD_ROWS).toBeGreaterThan(30)
     expect(world.width).toBeGreaterThan(1920)
     expect(world.height).toBeGreaterThan(1080)
+    expect(world.width / WORLD_COLUMNS).toBeLessThan(40)
     expect(roomCountForWorld()).toBeGreaterThan(8)
   })
 
