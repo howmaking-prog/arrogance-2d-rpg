@@ -1,8 +1,8 @@
 import { drawSlashArc, lungeOffset, slashFrame, SLASH_ROWS } from './combat/strikePose.js'
 
 const FRAME_SIZE = 64
-// 배경 타일이 작아진 만큼 몬스터도 한 칸에 맞게 줄인다.
-const SPRITE_SCALE = 1
+// 타일 32px에 맞춰 몬스터 스프라이트 배율을 둔다.
+const SPRITE_SCALE = 2
 const IDLE_ROW = 10
 const WALK_ROWS = { up: 8, left: 9, down: 10, right: 11 }
 const WALK_FRAMES = 9

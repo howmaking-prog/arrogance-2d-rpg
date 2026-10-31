@@ -1,5 +1,5 @@
 import { generateDungeon } from './generator.js?v=19'
-import { cameraFor, pickUpStairTile, roomCountForWorld, WORLD_COLUMNS, WORLD_ROWS, WORLD_TILE_SIZE, worldPixelSize } from './world.js?v=24'
+import { cameraFor, pickUpStairTile, roomCountForWorld, WORLD_COLUMNS, WORLD_ROWS, WORLD_TILE_SIZE, worldPixelSize } from './world.js?v=26'
 import { modeForFloor, themeForMode } from './themes.js?v=17'
 import { TILE } from './tiles.js?v=16'
 

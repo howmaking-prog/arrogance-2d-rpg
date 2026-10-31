@@ -1,10 +1,10 @@
 import { TILE } from './tiles.js'
 
 // 화면보다 훨씬 넓은 층. 칸 크기는 고정하고, 보이는 범위만 카메라로 따라간다.
-export const WORLD_COLUMNS = 160
-export const WORLD_ROWS = 120
-// 타일 한 칸을 작게 두어 같은 화면에도 더 촘촘한 배경이 보이게 한다.
-export const WORLD_TILE_SIZE = 16
+export const WORLD_COLUMNS = 80
+export const WORLD_ROWS = 60
+// 타일 한 칸 크기. 캐릭터·몬스터 스프라이트 배율과 맞춰 둔다.
+export const WORLD_TILE_SIZE = 32
 export const MIN_WORLD_ROOMS = 18
 export const MAX_WORLD_ROOMS = 32
 export const WORLD_ROOM_AREA = 180
