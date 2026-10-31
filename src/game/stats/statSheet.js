@@ -1,5 +1,5 @@
-import { COMBAT_SKILLS } from '../combat/skills.js?v=25'
-import { BASE_STAT, STAT_POINT_CAP } from './constants.js?v=25'
+import { COMBAT_SKILLS } from '../combat/skills.js?v=27'
+import { BASE_STAT, STAT_POINT_CAP } from './constants.js?v=27'
 
 const HERO_NAME = '방랑자'
 const HERO_META = 'HUMAN / MALE / 방랑자'
@@ -33,7 +33,7 @@ const PROFILE_GEAR = {
   right: [
     { id: 'offhand', label: 'SHIELD', mark: 'SH', shape: 'tall' },
     { id: 'amulet', label: 'NECKLACE', mark: 'N', shape: '' },
-    { id: 'ring2', label: 'EARRING', mark: 'E', shape: '' },
+    { id: 'earring', label: 'EARRING', mark: 'E', shape: '' },
   ],
 }
 
@@ -97,6 +97,7 @@ export const createStatSheet = (progression, getContext) => {
       progression.setGear({
         weaponAtk: context.weaponAtk || 0,
         armorDef: context.armorDef || 0,
+        bonus: context.bonus || {},
       })
       const state = progression.getState()
       const derived = state.derived
@@ -190,15 +191,25 @@ export const createStatSheet = (progression, getContext) => {
         </div>
       `
 
-      const art = context.swordArt || {}
+      const resolveIcon = typeof context.getIconImage === 'function'
+        ? context.getIconImage
+        : () => null
       root.querySelectorAll('[data-profile-slot]').forEach((frame) => {
         if (!(frame instanceof HTMLElement)) {
           return
         }
         const item = equipment[frame.dataset.profileSlot]
         const canvas = frame.querySelector('canvas')
-        if (item && item.name === '놋쇠검' && canvas instanceof HTMLCanvasElement) {
-          drawItemIcon(canvas, art.image, art.source)
+        if (item?.iconPath && canvas instanceof HTMLCanvasElement) {
+          const image = resolveIcon(item.iconPath)
+          if (image?.complete && image.naturalWidth > 0) {
+            drawItemIcon(canvas, image, {
+              x: 0,
+              y: 0,
+              width: image.naturalWidth,
+              height: image.naturalHeight,
+            })
+          }
         }
       })
     } catch (error) {

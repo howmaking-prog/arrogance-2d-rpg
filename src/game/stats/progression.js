@@ -32,12 +32,19 @@ export const createStatProgression = () => {
   let primaryStat = 'str'
   let weaponAtk = 0
   let armorDef = 0
+  let gearBonus = { str: 0, agi: 0, int: 0, vit: 0, maxHp: 0, maxMp: 0 }
 
   const ownedPoints = () => statSum(stats) + unspent
 
   const getState = () => {
     const snapshot = { ...stats }
-    const attack = totalAttack(primaryStat, snapshot, weaponAtk)
+    const effective = {
+      str: snapshot.str + (gearBonus.str || 0),
+      agi: snapshot.agi + (gearBonus.agi || 0),
+      int: snapshot.int + (gearBonus.int || 0),
+      vit: snapshot.vit + (gearBonus.vit || 0),
+    }
+    const attack = totalAttack(primaryStat, effective, weaponAtk)
     return {
       stats: snapshot,
       unspent,
@@ -46,15 +53,16 @@ export const createStatProgression = () => {
       primaryStat,
       weaponAtk,
       armorDef,
+      gearBonus: { ...gearBonus },
       ownedPoints: ownedPoints(),
       derived: {
-        maxHp: maxHp(snapshot.vit),
-        maxMp: maxMp(snapshot.int),
-        baseAtk: baseAttack(primaryStat, snapshot),
+        maxHp: maxHp(effective.vit) + (gearBonus.maxHp || 0),
+        maxMp: maxMp(effective.int) + (gearBonus.maxMp || 0),
+        baseAtk: baseAttack(primaryStat, effective),
         totalAtk: attack,
         totalDef: totalDefense(armorDef),
-        attackSpeed: attackSpeed(snapshot.agi),
-        critChancePercent: critChancePercent(snapshot.agi),
+        attackSpeed: attackSpeed(effective.agi),
+        critChancePercent: critChancePercent(effective.agi),
       },
     }
   }
@@ -113,12 +121,24 @@ export const createStatProgression = () => {
     return getState()
   }
 
-  const setGear = ({ weaponAtk: nextWeaponAtk, armorDef: nextArmorDef }) => {
+  const setGear = ({
+    weaponAtk: nextWeaponAtk = 0,
+    armorDef: nextArmorDef = 0,
+    bonus = {},
+  }) => {
     if (!Number.isFinite(nextWeaponAtk) || nextWeaponAtk < 0 || !Number.isFinite(nextArmorDef) || nextArmorDef < 0) {
       throw new Error('장착 능력치가 올바르지 않습니다.')
     }
     weaponAtk = nextWeaponAtk
     armorDef = nextArmorDef
+    gearBonus = {
+      str: Math.max(0, Number(bonus.str) || 0),
+      agi: Math.max(0, Number(bonus.agi) || 0),
+      int: Math.max(0, Number(bonus.int) || 0),
+      vit: Math.max(0, Number(bonus.vit) || 0),
+      maxHp: Math.max(0, Number(bonus.maxHp) || 0),
+      maxMp: Math.max(0, Number(bonus.maxMp) || 0),
+    }
     return getState()
   }
 

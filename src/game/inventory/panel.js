@@ -129,8 +129,9 @@ export const createInventoryPanel = ({ onBagActivate, onEquipActivate }) => {
     )
   }
 
-  const drawIcon = (canvas, image, source) => {
-    if (!(canvas instanceof HTMLCanvasElement) || !image || !source) {
+  // 카탈로그 PNG 전체를 칸 안에 맞춰 그린다.
+  const drawIcon = (canvas, image) => {
+    if (!(canvas instanceof HTMLCanvasElement) || !image || !image.complete || image.naturalWidth <= 0) {
       return
     }
     const ctx = canvas.getContext('2d')
@@ -139,15 +140,15 @@ export const createInventoryPanel = ({ onBagActivate, onEquipActivate }) => {
     }
     ctx.clearRect(0, 0, canvas.width, canvas.height)
     ctx.imageSmoothingEnabled = false
-    const scale = Math.min(canvas.width / source.width, canvas.height / source.height) * 0.85
-    const width = source.width * scale
-    const height = source.height * scale
+    const scale = Math.min(canvas.width / image.naturalWidth, canvas.height / image.naturalHeight) * 0.88
+    const width = image.naturalWidth * scale
+    const height = image.naturalHeight * scale
     ctx.drawImage(
       image,
-      source.x,
-      source.y,
-      source.width,
-      source.height,
+      0,
+      0,
+      image.naturalWidth,
+      image.naturalHeight,
       (canvas.width - width) / 2,
       (canvas.height - height) / 2,
       width,
@@ -220,10 +221,11 @@ export const createInventoryPanel = ({ onBagActivate, onEquipActivate }) => {
         goldLabel.textContent = String(Math.max(0, Math.floor(Number(amount) || 0)))
       }
     },
-    render: ({ bagItems, equipment, swordImage, swordSource }) => {
+    render: ({ bagItems, equipment, getIconImage }) => {
       try {
         ensureDom()
         drawHero()
+        const resolveIcon = typeof getIconImage === 'function' ? getIconImage : () => null
         ;[...EQUIP_LEFT, ...EQUIP_RIGHT].forEach((slot) => {
           const button = root.querySelector(`[data-slot="${slot.id}"]`)
           if (!(button instanceof HTMLElement)) {
@@ -232,14 +234,14 @@ export const createInventoryPanel = ({ onBagActivate, onEquipActivate }) => {
           const item = equipment[slot.id] || null
           button.classList.toggle('filled', Boolean(item))
           button.title = item
-            ? `${item.name} · 더블클릭하면 벗는다`
+            ? `${item.name}${item.description ? ` · ${item.description}` : ''} · 더블클릭하면 벗는다`
             : `${slot.label} · 비어 있음`
           const canvas = button.querySelector('canvas')
           if (canvas instanceof HTMLCanvasElement) {
             const ctx = canvas.getContext('2d')
             ctx?.clearRect(0, 0, canvas.width, canvas.height)
-            if (item && item.name === '놋쇠검') {
-              drawIcon(canvas, swordImage, swordSource)
+            if (item?.iconPath) {
+              drawIcon(canvas, resolveIcon(item.iconPath))
             }
           }
         })
@@ -261,14 +263,16 @@ export const createInventoryPanel = ({ onBagActivate, onEquipActivate }) => {
           tile.style.top = `${item.y * BAG_CELL_SIZE}px`
           tile.style.width = `${item.width * BAG_CELL_SIZE}px`
           tile.style.height = `${item.height * BAG_CELL_SIZE}px`
-          tile.title = `${item.name} · 더블클릭하면 장착`
+          tile.title = item.equipSlot
+            ? `${item.name} · 더블클릭하면 장착`
+            : `${item.name}${item.description ? ` · ${item.description}` : ''}`
           const canvas = document.createElement('canvas')
           canvas.width = BAG_CELL_SIZE
           canvas.height = BAG_CELL_SIZE
           canvas.setAttribute('aria-hidden', 'true')
           tile.appendChild(canvas)
-          if (item.name === '놋쇠검') {
-            drawIcon(canvas, swordImage, swordSource)
+          if (item.iconPath) {
+            drawIcon(canvas, resolveIcon(item.iconPath))
           }
           layer.appendChild(tile)
         })

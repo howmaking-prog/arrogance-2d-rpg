@@ -8,12 +8,10 @@ export const BAG_FILTERS = [
   { id: 'weapon', label: '무기' },
   { id: 'armor', label: '방어구' },
   { id: 'potion', label: '포션' },
-  { id: 'material', label: '재료' },
   { id: 'jewelry', label: '장신구' },
-  { id: 'gem', label: '보석' },
 ]
 
-// 캐릭터 기준 왼쪽·오른쪽 장착 칸.
+// 캐릭터 기준 왼쪽·오른쪽 장착 칸. 장갑은 비워 두고 시각만 맞춘다.
 export const EQUIP_LEFT = [
   { id: 'head', label: '투구', kind: 'head' },
   { id: 'torso', label: '갑옷', kind: 'torso' },
@@ -27,15 +25,20 @@ export const EQUIP_RIGHT = [
   { id: 'offhand', label: '방패', kind: 'offhand' },
   { id: 'amulet', label: '목걸이', kind: 'amulet' },
   { id: 'ring1', label: '반지', kind: 'ring' },
-  { id: 'ring2', label: '반지', kind: 'ring' },
+  { id: 'earring', label: '귀걸이', kind: 'earring' },
 ]
 
 export const EQUIP_SLOTS = [...EQUIP_LEFT, ...EQUIP_RIGHT]
 
-export const BRASS_SWORD = {
-  name: '놋쇠검',
-  kind: 'weapon',
-  width: 1,
-  height: 1,
-  rarity: 'rare',
-}
+export const emptyEquipment = () => ({
+  head: null,
+  torso: null,
+  gloves: null,
+  belt: null,
+  boots: null,
+  weapon: null,
+  offhand: null,
+  amulet: null,
+  ring1: null,
+  earring: null,
+})
