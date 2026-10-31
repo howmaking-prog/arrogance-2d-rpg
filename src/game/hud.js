@@ -66,6 +66,23 @@ export const createHud = () => {
         }
       })
     })
+
+    // 프로필·가방 등 열린 창은 ESC로 닫는다.
+    window.addEventListener('keydown', (event) => {
+      try {
+        if (event.key !== 'Escape') {
+          return
+        }
+        buttons.forEach((button) => {
+          const id = button.getAttribute('data-window')
+          if (id) {
+            setOpen(id, false)
+          }
+        })
+      } catch (error) {
+        console.error('ESC 창 닫기 실패', error)
+      }
+    })
   } catch (error) {
     console.error('화면 창 준비 실패', error)
   }

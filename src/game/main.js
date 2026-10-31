@@ -5,14 +5,15 @@ import { createHitSounds } from './combat/sfx.js?v=17'
 import { skillById, skillHitMessage } from './combat/skills.js?v=23'
 import { createDungeonLayout } from './dungeon/layout.js?v=24'
 import { drawTowerFloor } from './floor.js?v=24'
-import { createHud } from './hud.js?v=10'
-import { createFieldItems } from './items.js?v=23'
+import { createHud } from './hud.js?v=25'
+import { createFieldItems } from './items.js?v=25'
 import { createGoblinPack } from './monsterPack.js?v=24'
 import { createPlayer, toCanvasPoint } from './player.js?v=24'
 import { drawStairs, stairAtPoint, stairsFromLayout } from './stairs.js?v=24'
-import { createStatProgression } from './stats/progression.js?v=24'
-import { createStatSheet } from './stats/statSheet.js?v=24'
+import { createStatProgression } from './stats/progression.js?v=25'
+import { createStatSheet } from './stats/statSheet.js?v=25'
 import { createExpBar } from './ui/expBar.js?v=21'
+import { expProgress } from './ui/exp.js?v=21'
 import { createMessageLog } from './ui/messageLog.js?v=21'
 
 const CLICK_DELAY = 220
@@ -75,10 +76,15 @@ const startGame = () => {
     messages.push('오만의 탑에 들어왔다.')
     expBar.setExp(0)
     items.setGold(0)
+    const wallet = { exp: 0, gold: 0 }
     const progression = createStatProgression()
     const statSheet = createStatSheet(progression, () => ({
       weaponAtk: items.getEquippedAttack(),
       armorDef: items.getEquippedDefense(),
+      gold: wallet.gold,
+      level: expProgress(wallet.exp).level,
+      equipment: items.getEquipment(),
+      swordArt: items.getSwordArt(),
     }))
     items.onEquipChange(() => statSheet.refresh())
     let clickTimer = null
@@ -86,7 +92,6 @@ const startGame = () => {
     let pointer = null
     let holdStairs = false
     let vitals = null
-    const wallet = { exp: 0, gold: 0 }
     const sounds = createHitSounds()
     let heardSwing = 0
     const playNewStrikes = (state) => {
@@ -219,6 +224,7 @@ const startGame = () => {
       messages.push(`승리! 경험치 +${reward.exp}, 골드 +${reward.gold}`)
       expBar.setExp(wallet.exp)
       items.setGold(wallet.gold)
+      statSheet.refresh()
       combatView.hideResult()
       combatView.setOpen(false)
       vitals = combat.end()

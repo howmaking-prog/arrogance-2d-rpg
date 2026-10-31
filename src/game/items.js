@@ -337,6 +337,11 @@ export const createFieldItems = (canvas, position) => {
     captureFloor,
     applyFloor,
     setGold: (amount) => panel.setGold(amount),
+    getEquipment: () => ({ ...equipment }),
+    getSwordArt: () => ({
+      image: swordReady ? swordImage : null,
+      source: SWORD_SOURCE,
+    }),
     getEquippedWeapon: () => (equipment.weapon && swordReady ? swordImage : null),
     getEquippedAttack: () => (equipment.weapon ? BRASS_SWORD_ATK : 0),
     getEquippedDefense: () => 0,
