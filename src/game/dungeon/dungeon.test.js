@@ -97,20 +97,26 @@ describe('방과 복도 던전', () => {
     }
   })
 
-  test('시작방과 출구방을 뺀 방에 몬스터나 함정을 1마리 이상 3마리 이하로 둔다', () => {
+  test('시작방을 뺀 방에 몬스터나 함정을 1마리 이상 3마리 이하로 둔다', () => {
     const dungeon = generateDungeon({ seed: 8, width: 30, height: 30, roomCount: 6 })
     expect(dungeon.monsterSpawns.length).toBeLessThanOrEqual(3)
     if (dungeon.rooms.length >= 3) {
       expect(dungeon.monsterSpawns.length).toBeGreaterThanOrEqual(1)
     }
     const startRoom = dungeon.rooms[0]
-    const exitRoom = dungeon.rooms[dungeon.exitRoomIndex]
     dungeon.monsterSpawns.forEach((spawn) => {
       expect(['monster', 'trap']).toContain(spawn.kind)
       expect(dungeon.grid[spawn.y][spawn.x]).toBe(TILE.FLOOR)
       expect(insideRoom(startRoom, spawn)).toBe(false)
-      expect(insideRoom(exitRoom, spawn)).toBe(false)
     })
+  })
+
+  test('넓은 맵에는 몬스터와 함정을 더 많이 둔다', () => {
+    const dungeon = generateDungeon({ seed: 3, width: 80, height: 60, roomCount: 20 })
+    expect(dungeon.monsterSpawns.length).toBeGreaterThanOrEqual(8)
+    expect(dungeon.monsterSpawns.length).toBeLessThanOrEqual(14)
+    const monsters = dungeon.monsterSpawns.filter((spawn) => spawn.kind === 'monster')
+    expect(monsters.length).toBeGreaterThan(1)
   })
 
   test('같은 시드는 같은 맵을 만들고 생성기 함수로도 다시 만들 수 있다', () => {

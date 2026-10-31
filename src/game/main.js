@@ -2,13 +2,13 @@ import { createCombatManager } from './combat/combat.js?v=17'
 import { createCombatView } from './combat/combatView.js?v=17'
 import { createGoblinProfile } from './combat/monsterStats.js?v=15'
 import { createHitSounds } from './combat/sfx.js?v=17'
-import { createDungeonLayout } from './dungeon/layout.js?v=18'
+import { createDungeonLayout } from './dungeon/layout.js?v=19'
 import { drawTowerFloor } from './floor.js?v=18'
 import { createHud } from './hud.js?v=10'
 import { createFieldItems } from './items.js?v=10'
-import { createGoblin } from './monster.js?v=17'
+import { createGoblinPack } from './monsterPack.js?v=19'
 import { createPlayer, toCanvasPoint } from './player.js?v=17'
-import { drawStairs, stairAtPoint, stairsFromLayout } from './stairs.js?v=14'
+import { drawStairs, stairAtPoint, stairsFromLayout } from './stairs.js?v=19'
 import { createStatProgression } from './stats/progression.js?v=10'
 import { createStatSheet } from './stats/statSheet.js?v=10'
 
@@ -66,7 +66,7 @@ const startGame = () => {
     actor.placeAt(layout.playerStart)
     createHud()
     const items = createFieldItems(canvas, layout.chest)
-    const goblin = createGoblin(canvas, layout.encounter)
+    const goblins = createGoblinPack(canvas, layout.monsters)
     const progression = createStatProgression()
     const statSheet = createStatSheet(progression, () => ({
       weaponAtk: items.getEquippedAttack(),
@@ -88,14 +88,6 @@ const startGame = () => {
         }
       })
       heardSwing = state.swings.reduce((latest, swing) => Math.max(latest, swing.id), heardSwing)
-    }
-    const facingBetween = (from, to) => {
-      const dx = to.x - from.x
-      const dy = to.y - from.y
-      if (Math.abs(dx) > Math.abs(dy)) {
-        return dx < 0 ? 'left' : 'right'
-      }
-      return dy < 0 ? 'up' : 'down'
     }
     const combat = createCombatManager({
       getPlayer: () => {
@@ -176,7 +168,7 @@ const startGame = () => {
 
       floors.set(floor, {
         items: items.captureFloor(),
-        goblin: goblin.capture(),
+        goblins: goblins.capture(),
         seed: dungeonSeed,
       })
       floor = nextFloor
@@ -185,7 +177,7 @@ const startGame = () => {
       if (saved) {
         rebuildLayout(saved.seed)
         items.applyFloor(saved.items)
-        goblin.place(saved.goblin)
+        goblins.placeAll(saved.goblins || (saved.goblin ? [saved.goblin] : layout.monsters))
       } else {
         rebuildLayout(randomSeed())
         items.applyFloor({
@@ -194,7 +186,7 @@ const startGame = () => {
           open: false,
           droppedSword: null,
         })
-        goblin.place({ ...layout.encounter, alive: true })
+        goblins.placeAll(layout.monsters.map((spot) => ({ ...spot, alive: true })))
       }
 
       const here = direction === 'up' ? layout.playerStart : layout.exitApproach
@@ -247,7 +239,7 @@ const startGame = () => {
         combatView.hideResult()
         combatView.setOpen(false)
         vitals = combat.end()
-        goblin.defeat()
+        goblins.defeatActive()
         if (stairAtPoint(currentStairs(), actor.getPosition())) {
           holdStairs = true
         }
@@ -268,9 +260,9 @@ const startGame = () => {
       items.draw(ctx)
       const state = combat.getSnapshot()
       const playerPoint = actor.getPosition()
-      const monsterPoint = goblin.getPosition()
+      const monsterPoint = goblins.getActivePosition() || playerPoint
       const monsterSwing = state.swings.find((item) => item.who === 'monster')
-      goblin.draw(ctx, state.monsterFlash, monsterSwing, facingBetween(monsterPoint, playerPoint))
+      goblins.draw(ctx, state.monsterFlash, monsterSwing, playerPoint)
       if (actor.isReady()) {
         const playerSwing = state.swings.find((item) => item.who === 'player')
         actor.draw(ctx, items.getEquippedWeapon(), state.playerFlash, playerSwing)
@@ -357,15 +349,15 @@ const startGame = () => {
           actor.update(dt)
           stepOntoStairs()
           const here = actor.getPosition()
-          const foe = goblin.getPosition()
-          const nearMonster = goblin.isAlive() && Math.hypot(here.x - foe.x, here.y - foe.y) <= ENGAGE_DISTANCE
+          const nearMonster = goblins.nearestAlive(here, ENGAGE_DISTANCE)
           if (nearMonster) {
             actor.placeAt(here)
+            goblins.setActive(nearMonster.id)
             const started = combat.start(createGoblinProfile(floor))
             combatView.resetBars(started)
             combatView.hideResult()
             combatView.setOpen(true)
-            console.log(`[상태] 전투 시작 | ${started.monster.name}`)
+            console.log(`[상태] 전투 시작 | ${started.monster.name} | 남은 ${goblins.aliveCount()}마리`)
           }
         } else if (combat.isFighting()) {
           combat.update(dt)

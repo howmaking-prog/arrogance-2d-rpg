@@ -10,7 +10,17 @@ const ROOM_PADDING = 2
 const ROOM_PLACEMENT_ATTEMPTS = 40
 const MONSTER_MIN = 1
 const MONSTER_MAX = 3
+const LARGE_MAP_AREA = 4000
+const LARGE_MONSTER_MIN = 8
+const LARGE_MONSTER_MAX = 14
+const MONSTER_KIND_CHANCE = 0.8
 const DEFAULT_SEED = 1
+
+const spawnBudget = (width, height) => (
+  width * height >= LARGE_MAP_AREA
+    ? { min: LARGE_MONSTER_MIN, max: LARGE_MONSTER_MAX }
+    : { min: MONSTER_MIN, max: MONSTER_MAX }
+)
 
 const NEIGHBORS = [
   [1, 0],
@@ -318,18 +328,22 @@ const buildDungeon = ({ width, height, roomCount, seed, mode }) => {
   })
 
   const exitPortal = farthestTile(tilesInRoom(grid, rooms[exitRoomIndex]), playerStart) || playerStart
+  const spawnRooms = rooms.filter((_, index) => index !== 0)
   const middleRooms = rooms.filter((_, index) => index !== 0 && index !== exitRoomIndex)
-  const candidates = middleRooms.flatMap((room) => tilesInRoom(grid, room))
+  const budget = spawnBudget(width, height)
+  const candidates = spawnRooms
+    .flatMap((room) => tilesInRoom(grid, room))
+    .filter((tile) => !(tile.x === exitPortal.x && tile.y === exitPortal.y))
   const spawnCount = candidates.length === 0
     ? 0
     : Math.min(
       candidates.length,
-      MONSTER_MIN + Math.floor(rng() * (MONSTER_MAX - MONSTER_MIN + 1)),
+      budget.min + Math.floor(rng() * (budget.max - budget.min + 1)),
     )
   const monsterSpawns = shuffle(rng, candidates).slice(0, spawnCount).map((tile) => ({
     x: tile.x,
     y: tile.y,
-    kind: rng() < 0.5 ? 'monster' : 'trap',
+    kind: rng() < MONSTER_KIND_CHANCE ? 'monster' : 'trap',
   }))
 
   const occupied = new Set([
@@ -337,7 +351,7 @@ const buildDungeon = ({ width, height, roomCount, seed, mode }) => {
     keyOf(exitPortal.x, exitPortal.y),
     ...monsterSpawns.map((spawn) => keyOf(spawn.x, spawn.y)),
   ])
-  const chestRooms = middleRooms.length > 0 ? middleRooms : [rooms[exitRoomIndex]]
+  const chestRooms = middleRooms.length > 0 ? middleRooms : spawnRooms
   const chestCandidates = chestRooms
     .flatMap((room) => tilesInRoom(grid, room))
     .filter((tile) => !occupied.has(keyOf(tile.x, tile.y)))

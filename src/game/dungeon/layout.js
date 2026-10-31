@@ -1,4 +1,4 @@
-import { generateDungeon } from './generator.js?v=17'
+import { generateDungeon } from './generator.js?v=19'
 import { cameraFor, pickUpStairTile, roomCountForWorld, WORLD_COLUMNS, WORLD_ROWS, WORLD_TILE_SIZE, worldPixelSize } from './world.js?v=16'
 import { modeForFloor, themeForMode } from './themes.js?v=17'
 import { TILE } from './tiles.js?v=16'
@@ -97,7 +97,11 @@ export const createDungeonLayout = ({ floor, seed }) => {
     const trapTiles = dungeon.monsterSpawns
       .filter((spawn) => spawn.kind === 'trap')
       .map((spawn) => ({ x: spawn.x, y: spawn.y }))
-    const encounter = monsterPixels[0] || (trapTiles[0] ? toPixel(trapTiles[0]) : toPixel(dungeon.chestSpawn))
+    // 함정만 있어도 필드에 보이도록 몬스터 자리로 쓴다.
+    const fieldMonsters = monsterPixels.length > 0
+      ? monsterPixels
+      : trapTiles.map((tile) => toPixel(tile))
+    const encounter = fieldMonsters[0] || toPixel(dungeon.chestSpawn)
 
     return {
       seed,
@@ -118,7 +122,7 @@ export const createDungeonLayout = ({ floor, seed }) => {
       exitApproach: toPixel(exitNeighbors[0] || upStairTile),
       downStair: toPixel(separatedDown),
       chest: toPixel(dungeon.chestSpawn),
-      monsters: monsterPixels,
+      monsters: fieldMonsters,
       encounter,
       isWalkable,
       nearestWalkable,
