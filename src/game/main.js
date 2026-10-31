@@ -5,7 +5,7 @@ import { createHitSounds } from './combat/sfx.js?v=17'
 import { createDungeonLayout } from './dungeon/layout.js?v=19'
 import { drawTowerFloor } from './floor.js?v=18'
 import { createHud } from './hud.js?v=10'
-import { createFieldItems } from './items.js?v=10'
+import { createFieldItems } from './items.js?v=22'
 import { createGoblinPack } from './monsterPack.js?v=20'
 import { createPlayer, toCanvasPoint } from './player.js?v=20'
 import { drawStairs, stairAtPoint, stairsFromLayout } from './stairs.js?v=19'
@@ -73,6 +73,7 @@ const startGame = () => {
     const goblins = createGoblinPack(canvas, layout.monsters)
     messages.push('오만의 탑에 들어왔다.')
     expBar.setExp(0)
+    items.setGold(0)
     const progression = createStatProgression()
     const statSheet = createStatSheet(progression, () => ({
       weaponAtk: items.getEquippedAttack(),
@@ -216,6 +217,7 @@ const startGame = () => {
       wallet.gold += reward.gold
       messages.push(`승리! 경험치 +${reward.exp}, 골드 +${reward.gold}`)
       expBar.setExp(wallet.exp)
+      items.setGold(wallet.gold)
       combatView.hideResult()
       combatView.setOpen(false)
       vitals = combat.end()

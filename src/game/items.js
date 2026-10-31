@@ -1,16 +1,17 @@
 import { BRASS_SWORD_ATK } from './stats/constants.js'
+import { clearFromBag, createEmptyBag, findFreeSpot, placeOnBag } from './inventory/bagGrid.js?v=22'
+import { BRASS_SWORD } from './inventory/constants.js?v=22'
+import { createInventoryPanel } from './inventory/panel.js?v=22'
 
 // 상자와 떨어진 아이템에 손을 뻗을 수 있는 거리. 좌표는 중심이다.
-const CHEST_WIDTH = 120
-const CHEST_HEIGHT = 108
+const CHEST_WIDTH = 88
+const CHEST_HEIGHT = 68
 const CHEST_REACH = 120
-const CHEST_SCALE = 3
 
 // 걷기 아래 방향 첫 칸에 있는 놋쇠검만 잘라 바닥 아이템으로 쓴다.
 const SWORD_URL = 'src/item/weapon/Sword_brass.png'
 const SWORD_SOURCE = { x: 25, y: 686, width: 20, height: 11 }
 const SWORD_SCALE = 2
-const SWORD_NAME = '놋쇠검'
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value))
 
@@ -24,124 +25,73 @@ const containsPoint = (point, centerX, centerY, width, height) => (
   && Math.abs(point.y - centerY) <= height / 2
 )
 
-const CHEST_SPRITE_WIDTH = 40
-const CHEST_SPRITE_HEIGHT = 36
-
-const paintPixel = (ctx, x, y, color) => {
-  ctx.fillStyle = color
-  ctx.fillRect(x, y, 1, 1)
-}
-
-// 작은 픽셀 상자를 만들어 확대해 그린다. 곡선 도형은 쓰지 않는다.
-const buildChestSprite = (open) => {
-  const sprite = document.createElement('canvas')
-  sprite.width = CHEST_SPRITE_WIDTH
-  sprite.height = CHEST_SPRITE_HEIGHT
-  const ctx = sprite.getContext('2d')
-  if (!ctx) {
-    throw new Error('보물상자 픽셀을 만들 수 없습니다.')
-  }
-
-  const wood = (x) => (Math.floor(x / 4) % 2 === 0 ? '#6a3c20' : '#8a4e2a')
-  const put = (x, y, color) => paintPixel(ctx, x, y, color)
-
-  for (let y = 18; y <= 32; y += 1) {
-    for (let x = 4; x <= 35; x += 1) {
-      put(x, y, wood(x))
-    }
-  }
-  for (let x = 3; x <= 36; x += 1) {
-    put(x, 17, '#2a180e')
-    put(x, 33, '#2a180e')
-  }
-  for (let y = 17; y <= 33; y += 1) {
-    put(3, y, '#2a180e')
-    put(36, y, '#2a180e')
-  }
-  for (let x = 4; x <= 35; x += 1) {
-    put(x, 22, '#c4963a')
-    put(x, 23, '#f0d078')
-    put(x, 30, '#c4963a')
-  }
-
-  const lidRows = open
-    ? [[8, 14, 25], [7, 11, 28], [6, 8, 31], [5, 6, 33]]
-    : [[8, 16, 23], [9, 12, 27], [10, 8, 31], [11, 6, 33], [12, 5, 34], [13, 4, 35], [14, 4, 35], [15, 4, 35], [16, 4, 35]]
-
-  lidRows.forEach(([y, left, right]) => {
-    for (let x = left; x <= right; x += 1) {
-      put(x, y, '#5c3218')
-      put(x, y, wood(x))
-    }
-    put(left, y, '#2a180e')
-    put(right, y, '#2a180e')
-  })
-  for (let x = 6; x <= 33; x += 1) {
-    put(x, open ? 5 : 8, '#f0d078')
-  }
-  for (let y = open ? 6 : 9; y <= 31; y += 1) {
-    put(18, y, '#8a6828')
-    put(19, y, '#f0d078')
-    put(20, y, '#fff1b8')
-    put(21, y, '#c4963a')
-  }
-
-  if (open) {
-    for (let y = 18; y <= 24; y += 1) {
-      for (let x = 8; x <= 31; x += 1) {
-        put(x, y, '#140e0a')
-      }
-    }
-    put(16, 21, '#f0d078')
-    put(23, 20, '#fff1b8')
-    put(14, 22, '#c4963a')
-  } else {
-    for (let y = 18; y <= 24; y += 1) {
-      for (let x = 16; x <= 23; x += 1) {
-        put(x, y, '#e6c36a')
-      }
-    }
-    put(19, 21, '#1a120c')
-    put(20, 21, '#1a120c')
-    put(19, 22, '#1a120c')
-    put(20, 22, '#1a120c')
-  }
-
-  const coins = [[8, 34], [12, 34], [15, 33], [27, 34], [31, 33]]
-  coins.forEach(([x, y], index) => {
-    put(x, y, index % 2 === 0 ? '#f0d078' : '#c4963a')
-    put(x + 1, y, '#fff1b8')
-  })
-
-  return sprite
-}
-
-let closedChestSprite = null
-let openChestSprite = null
-
-const chestSprite = (open) => {
-  if (open) {
-    openChestSprite = openChestSprite || buildChestSprite(true)
-    return openChestSprite
-  }
-  closedChestSprite = closedChestSprite || buildChestSprite(false)
-  return closedChestSprite
-}
-
+// 나무결과 쇠테, 자물쇠가 있는 상자를 그린다. 열리면 뚜껑이 뒤로 젖혀진다.
 const drawChest = (ctx, chest) => {
-  try {
-    const sprite = chestSprite(chest.open)
-    const width = CHEST_SPRITE_WIDTH * CHEST_SCALE
-    const height = CHEST_SPRITE_HEIGHT * CHEST_SCALE
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.4)'
-    ctx.beginPath()
-    ctx.ellipse(chest.x, chest.y + height * 0.38, width * 0.38, 8, 0, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.imageSmoothingEnabled = false
-    ctx.drawImage(sprite, chest.x - width / 2, chest.y - height / 2, width, height)
-  } catch (error) {
-    console.error('보물상자 그리기 실패', error)
+  const left = chest.x - chest.width / 2
+  const top = chest.y - chest.height / 2
+  const bodyTop = top + 28
+  const bodyHeight = chest.height - 28
+
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.35)'
+  ctx.beginPath()
+  ctx.ellipse(chest.x, top + chest.height - 2, chest.width * 0.42, 9, 0, 0, Math.PI * 2)
+  ctx.fill()
+
+  const drawBody = () => {
+    ctx.fillStyle = '#6b3f22'
+    ctx.fillRect(left, bodyTop, chest.width, bodyHeight)
+    ctx.fillStyle = '#8a552c'
+    for (let plank = 0; plank < 4; plank += 1) {
+      const plankX = left + 8 + plank * ((chest.width - 16) / 4)
+      ctx.fillRect(plankX, bodyTop + 4, 3, bodyHeight - 8)
+    }
+    ctx.fillStyle = '#d7b15a'
+    ctx.fillRect(left, bodyTop + 8, chest.width, 5)
+    ctx.fillRect(left, bodyTop + bodyHeight - 10, chest.width, 5)
+    ctx.fillStyle = '#8d7340'
+    ctx.fillRect(left, bodyTop, 6, bodyHeight)
+    ctx.fillRect(left + chest.width - 6, bodyTop, 6, bodyHeight)
   }
+
+  const drawLid = (lifted) => {
+    const lidTop = lifted ? top - 8 : top
+    const lidHeight = lifted ? 22 : 30
+    ctx.fillStyle = lifted ? '#4e311c' : '#5c3a22'
+    ctx.beginPath()
+    ctx.moveTo(left + 4, bodyTop)
+    ctx.quadraticCurveTo(chest.x, lidTop, left + chest.width - 4, bodyTop)
+    ctx.lineTo(left + chest.width - 8, bodyTop - (lifted ? 2 : 8))
+    ctx.quadraticCurveTo(chest.x, lidTop + lidHeight * 0.2, left + 8, bodyTop - (lifted ? 2 : 8))
+    ctx.closePath()
+    ctx.fill()
+    ctx.strokeStyle = '#d7b15a'
+    ctx.lineWidth = 3
+    ctx.beginPath()
+    ctx.moveTo(left + 10, bodyTop - 4)
+    ctx.quadraticCurveTo(chest.x, lidTop + 8, left + chest.width - 10, bodyTop - 4)
+    ctx.stroke()
+  }
+
+  if (!chest.open) {
+    drawBody()
+    drawLid(false)
+    ctx.fillStyle = '#f0d48a'
+    ctx.fillRect(chest.x - 7, bodyTop - 2, 14, 16)
+    ctx.fillStyle = '#2a2118'
+    ctx.beginPath()
+    ctx.arc(chest.x, bodyTop + 8, 3, 0, Math.PI * 2)
+    ctx.fill()
+    return
+  }
+
+  drawLid(true)
+  drawBody()
+  ctx.fillStyle = '#1a140f'
+  ctx.fillRect(left + 8, bodyTop + 4, chest.width - 16, 14)
+  ctx.fillStyle = '#e7c56a'
+  ctx.fillRect(chest.x - 4, bodyTop + 8, 8, 5)
+  ctx.fillStyle = '#f0d48a'
+  ctx.fillRect(chest.x - 7, bodyTop + 16, 14, 10)
 }
 
 const drawDroppedSword = (ctx, image, item) => {
@@ -161,10 +111,23 @@ const drawDroppedSword = (ctx, image, item) => {
   ctx.fillStyle = '#f4efe2'
   ctx.font = '14px sans-serif'
   ctx.textAlign = 'center'
-  ctx.fillText(SWORD_NAME, item.x, item.y + size.height / 2 + 16)
+  ctx.fillText(BRASS_SWORD.name, item.x, item.y + size.height / 2 + 16)
 }
 
-// 보물상자, 바닥의 놋쇠검, 인벤토리 표시를 한곳에서 다룬다.
+const emptyEquipment = () => ({
+  head: null,
+  amulet: null,
+  weapon: null,
+  torso: null,
+  offhand: null,
+  gloves: null,
+  belt: null,
+  boots: null,
+  ring1: null,
+  ring2: null,
+})
+
+// 보물상자, 바닥의 놋쇠검, 장착과 가방을 한곳에서 다룬다.
 export const createFieldItems = (canvas, position) => {
   const chest = {
     x: position.x,
@@ -176,8 +139,10 @@ export const createFieldItems = (canvas, position) => {
   console.log(`[상태] 보물상자 배치 | 위치 (${Math.round(chest.x)}, ${Math.round(chest.y)})`)
   let droppedSword = null
   let swordReady = false
-  let equipped = false
-  const inventory = []
+  let nextItemId = 1
+  let bagGrid = createEmptyBag()
+  let bagItems = []
+  let equipment = emptyEquipment()
   const equipListeners = []
 
   const swordImage = new Image()
@@ -189,6 +154,7 @@ export const createFieldItems = (canvas, position) => {
         throw new Error('놋쇠검 이미지가 자를 영역보다 작습니다.')
       }
       swordReady = true
+      refreshPanel()
       console.log(`[상태] 놋쇠검 로드 | ${swordImage.naturalWidth}x${swordImage.naturalHeight}`)
     } catch (error) {
       console.error('놋쇠검 검증 실패', error)
@@ -199,49 +165,93 @@ export const createFieldItems = (canvas, position) => {
   })
   swordImage.src = SWORD_URL
 
-  const emptyLabel = document.getElementById('inventory-empty')
-  const inventoryItem = document.getElementById('inventory-item')
-  const swordIcon = document.getElementById('sword-icon')
-
-  // 인벤토리에 넣은 놋쇠검을 칸 안에 다시 그린다.
-  const renderInventory = () => {
-    try {
-      const hasSword = inventory.some((item) => item.name === SWORD_NAME)
-      if (!(emptyLabel instanceof HTMLElement) || !(inventoryItem instanceof HTMLElement)) {
-        throw new Error('인벤토리 요소를 찾을 수 없습니다.')
-      }
-      emptyLabel.hidden = hasSword
-      inventoryItem.hidden = !hasSword
-      inventoryItem.classList.toggle('equipped', hasSword && equipped)
-      inventoryItem.title = equipped ? '더블클릭하면 장착을 해제합니다.' : '더블클릭하면 장착합니다.'
-      const label = inventoryItem.querySelector('span')
-      if (label) {
-        label.textContent = equipped ? `${SWORD_NAME} · 장착` : SWORD_NAME
-      }
-      if (!hasSword || !(swordIcon instanceof HTMLCanvasElement)) {
-        return
-      }
-      const iconCtx = swordIcon.getContext('2d')
-      if (!iconCtx) {
-        throw new Error('인벤토리 칸을 그릴 수 없습니다.')
-      }
-      iconCtx.clearRect(0, 0, swordIcon.width, swordIcon.height)
-      iconCtx.imageSmoothingEnabled = false
-      iconCtx.drawImage(
-        swordImage,
-        SWORD_SOURCE.x,
-        SWORD_SOURCE.y,
-        SWORD_SOURCE.width,
-        SWORD_SOURCE.height,
-        0,
-        0,
-        swordIcon.width,
-        swordIcon.height,
-      )
-    } catch (error) {
-      console.error('인벤토리 표시 실패', error)
-    }
+  const refreshPanel = () => {
+    panel.render({
+      bagItems,
+      equipment,
+      swordImage: swordReady ? swordImage : null,
+      swordSource: SWORD_SOURCE,
+    })
+    equipListeners.forEach((listener) => listener())
   }
+
+  const addSwordToBag = () => {
+    const spot = findFreeSpot(bagGrid, BRASS_SWORD.width, BRASS_SWORD.height)
+    if (!spot) {
+      throw new Error('가방에 놋쇠검을 넣을 자리가 없습니다.')
+    }
+    const id = `item-${nextItemId}`
+    nextItemId += 1
+    bagGrid = placeOnBag(bagGrid, id, spot.x, spot.y, BRASS_SWORD.width, BRASS_SWORD.height)
+    bagItems = [
+      ...bagItems,
+      {
+        id,
+        name: BRASS_SWORD.name,
+        kind: BRASS_SWORD.kind,
+        width: BRASS_SWORD.width,
+        height: BRASS_SWORD.height,
+        x: spot.x,
+        y: spot.y,
+      },
+    ]
+  }
+
+  const equipFromBag = (itemId) => {
+    const item = bagItems.find((entry) => entry.id === itemId)
+    if (!item || item.kind !== 'weapon') {
+      return
+    }
+    bagGrid = clearFromBag(bagGrid, item.id)
+    bagItems = bagItems.filter((entry) => entry.id !== itemId)
+    const previous = equipment.weapon
+    if (previous) {
+      const spot = findFreeSpot(bagGrid, previous.width, previous.height)
+      if (!spot) {
+        bagGrid = placeOnBag(bagGrid, item.id, item.x, item.y, item.width, item.height)
+        bagItems = [...bagItems, item]
+        throw new Error('벗은 무기를 둘 가방 자리가 없습니다.')
+      }
+      bagGrid = placeOnBag(bagGrid, previous.id, spot.x, spot.y, previous.width, previous.height)
+      bagItems = [...bagItems, { ...previous, x: spot.x, y: spot.y }]
+    }
+    equipment = { ...equipment, weapon: { ...item } }
+    refreshPanel()
+    console.log(`[상태] 장착 | ${item.name}`)
+  }
+
+  const unequipSlot = (slotId) => {
+    const item = equipment[slotId]
+    if (!item) {
+      return
+    }
+    const spot = findFreeSpot(bagGrid, item.width, item.height)
+    if (!spot) {
+      throw new Error('가방에 자리가 없어 장비를 벗을 수 없습니다.')
+    }
+    bagGrid = placeOnBag(bagGrid, item.id, spot.x, spot.y, item.width, item.height)
+    bagItems = [...bagItems, { ...item, x: spot.x, y: spot.y }]
+    equipment = { ...equipment, [slotId]: null }
+    refreshPanel()
+    console.log(`[상태] 장착 해제 | ${item.name}`)
+  }
+
+  const panel = createInventoryPanel({
+    onBagActivate: (itemId) => {
+      try {
+        equipFromBag(itemId)
+      } catch (error) {
+        console.error('가방 장착 실패', error)
+      }
+    },
+    onEquipActivate: (slotId) => {
+      try {
+        unequipSlot(slotId)
+      } catch (error) {
+        console.error('장비 해제 실패', error)
+      }
+    },
+  })
 
   // 상자를 열면 놋쇠검을 상자 앞 바닥에 한 번만 떨어뜨린다.
   const openChest = () => {
@@ -258,48 +268,12 @@ export const createFieldItems = (canvas, position) => {
       droppedSword = {
         x: chest.x,
         y: chest.y + chest.height / 2 + size.height / 2 + 18,
-        name: SWORD_NAME,
+        name: BRASS_SWORD.name,
       }
-      console.log(`[상태] 보물상자 오픈 | ${SWORD_NAME}이 바닥에 떨어졌습니다.`)
+      console.log(`[상태] 보물상자 오픈 | ${BRASS_SWORD.name}이 바닥에 떨어졌습니다.`)
     } catch (error) {
       console.error('보물상자 처리 실패', error)
     }
-  }
-
-  // 인벤토리의 검을 더블클릭하면 장착하고, 다시 더블클릭하면 해제한다.
-  const equipSword = () => {
-    try {
-      const hasSword = inventory.some((item) => item.name === SWORD_NAME)
-      if (!hasSword) {
-        return
-      }
-      equipped = !equipped
-      renderInventory()
-      equipListeners.forEach((listener) => listener())
-      console.log(`[상태] ${equipped ? '장착' : '장착 해제'} | ${SWORD_NAME}`)
-    } catch (error) {
-      console.error('장착 처리 실패', error)
-    }
-  }
-
-  const inventoryPanel = document.getElementById('inventory')
-  if (inventoryPanel instanceof HTMLElement) {
-    // 칸 안의 캔버스는 더블클릭이 빠지는 경우가 있어, 두 번째 클릭으로 장착한다.
-    inventoryPanel.addEventListener('click', (event) => {
-      try {
-        if (event.detail !== 2 || !(event.target instanceof Element)) {
-          return
-        }
-        const slot = event.target.closest('#inventory-item')
-        if (!(slot instanceof HTMLElement) || slot.hidden) {
-          return
-        }
-        event.preventDefault()
-        equipSword()
-      } catch (error) {
-        console.error('장착 처리 실패', error)
-      }
-    })
   }
 
   const storeSword = () => {
@@ -307,10 +281,10 @@ export const createFieldItems = (canvas, position) => {
       if (!droppedSword) {
         return
       }
-      inventory.push({ name: droppedSword.name })
+      addSwordToBag()
       droppedSword = null
-      renderInventory()
-      console.log(`[상태] 인벤토리 저장 | ${SWORD_NAME} | 보유: ${inventory.length}`)
+      refreshPanel()
+      console.log(`[상태] 가방 보관 | ${BRASS_SWORD.name} | 가방 ${bagItems.length}개`)
     } catch (error) {
       console.error('인벤토리 저장 실패', error)
     }
@@ -333,7 +307,7 @@ export const createFieldItems = (canvas, position) => {
     droppedSword: droppedSword ? { ...droppedSword } : null,
   })
 
-  // 층을 옮길 때 그 층의 상자와 떨어진 검을 되돌린다. 인벤토리는 유지한다.
+  // 층을 옮길 때 그 층의 상자와 떨어진 검을 되돌린다. 가방은 유지한다.
   const applyFloor = (state) => {
     try {
       chest.x = state.x
@@ -346,14 +320,17 @@ export const createFieldItems = (canvas, position) => {
     }
   }
 
+  refreshPanel()
+
   return {
     openChest,
     storeSword,
     keepInside,
     captureFloor,
     applyFloor,
-    getEquippedWeapon: () => (equipped && swordReady ? swordImage : null),
-    getEquippedAttack: () => (equipped ? BRASS_SWORD_ATK : 0),
+    setGold: (amount) => panel.setGold(amount),
+    getEquippedWeapon: () => (equipment.weapon && swordReady ? swordImage : null),
+    getEquippedAttack: () => (equipment.weapon ? BRASS_SWORD_ATK : 0),
     getEquippedDefense: () => 0,
     onEquipChange: (listener) => {
       equipListeners.push(listener)

@@ -133,38 +133,153 @@
       font-size: 13px;
     }
 
-    #inventory {
-      min-height: 180px;
+    #inventory.inventory-window {
+      width: min(720px, calc(100% - 24px));
+      max-height: calc(100% - 96px);
+      overflow: auto;
+      border-color: #8a7348;
+      background:
+        linear-gradient(180deg, rgba(28, 22, 16, 0.96), rgba(14, 11, 9, 0.96));
     }
 
-    #inventory-empty {
-      margin: 0;
-      color: var(--muted);
-      font-size: 13px;
-    }
-
-    #inventory-item {
+    .inventory-body {
       display: grid;
-      justify-items: center;
-      gap: 6px;
-      font-size: 14px;
+      grid-template-columns: minmax(220px, 0.95fr) minmax(280px, 1.15fr);
+      gap: 16px;
+      align-items: start;
+    }
+
+    .equip-panel {
+      position: relative;
+      display: grid;
+      grid-template-columns: 56px 56px 56px 56px 56px;
+      grid-template-rows: 56px 56px 88px 56px 56px;
+      gap: 8px;
+      justify-content: center;
+      padding: 12px;
+      border: 2px solid #6a5a42;
+      border-radius: 8px;
+      background: rgba(8, 6, 5, 0.72);
+    }
+
+    .equip-slot {
+      position: relative;
+      display: grid;
+      place-items: center;
+      margin: 0;
+      padding: 4px;
+      border: 1px solid #5a4a34;
+      border-radius: 4px;
+      background: rgba(24, 18, 12, 0.95);
+      color: var(--muted);
       cursor: pointer;
     }
 
-    #inventory-item.equipped {
-      outline: 2px solid #e6c36a;
-      border-radius: 6px;
+    .equip-slot.filled {
+      border-color: #e6c36a;
+      box-shadow: inset 0 0 0 1px rgba(230, 195, 106, 0.35);
     }
 
-    #inventory-item[hidden] {
-      display: none;
+    .equip-slot-label {
+      position: absolute;
+      left: 3px;
+      top: 2px;
+      font-size: 10px;
+      line-height: 1;
+      opacity: 0.75;
+      pointer-events: none;
     }
 
-    #sword-icon {
-      width: 64px;
-      height: 36px;
+    .equip-slot-icon {
       image-rendering: pixelated;
       pointer-events: none;
+    }
+
+    .equip-head { grid-column: 3; grid-row: 1; }
+    .equip-amulet { grid-column: 4; grid-row: 2; width: 44px; height: 44px; justify-self: center; }
+    .equip-weapon { grid-column: 1 / span 2; grid-row: 2 / span 2; min-height: 150px; }
+    .equip-torso { grid-column: 3; grid-row: 2 / span 2; min-height: 150px; }
+    .equip-offhand { grid-column: 4 / span 2; grid-row: 2 / span 2; min-height: 150px; }
+    .equip-gloves { grid-column: 1; grid-row: 4; }
+    .equip-belt { grid-column: 2 / span 3; grid-row: 4; }
+    .equip-boots { grid-column: 5; grid-row: 4; }
+    .equip-ring1 { grid-column: 2; grid-row: 5; width: 44px; height: 44px; justify-self: end; }
+    .equip-ring2 { grid-column: 4; grid-row: 5; width: 44px; height: 44px; justify-self: start; }
+
+    .bag-panel {
+      padding: 12px;
+      border: 2px solid #6a5a42;
+      border-radius: 8px;
+      background: rgba(8, 6, 5, 0.72);
+    }
+
+    .bag-panel h3,
+    .equip-heading {
+      margin: 0 0 10px;
+      font-size: 14px;
+      color: #f3dd9a;
+      letter-spacing: 0.04em;
+    }
+
+    #bag-grid {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(var(--bag-cols, 10), var(--bag-cell, 28px));
+      grid-template-rows: repeat(var(--bag-rows, 4), var(--bag-cell, 28px));
+      width: calc(var(--bag-cols, 10) * var(--bag-cell, 28px));
+      height: calc(var(--bag-rows, 4) * var(--bag-cell, 28px));
+      border: 1px solid #3a3228;
+      background: #0a0806;
+    }
+
+    .bag-cell {
+      border: 1px solid #2a241c;
+      background: rgba(18, 14, 10, 0.95);
+      pointer-events: none;
+    }
+
+    .bag-items {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .bag-item {
+      position: absolute;
+      display: grid;
+      place-items: center;
+      margin: 0;
+      padding: 0;
+      border: 1px solid #7a6238;
+      background: rgba(72, 42, 96, 0.55);
+      cursor: pointer;
+      pointer-events: auto;
+    }
+
+    .bag-item canvas {
+      width: 100%;
+      height: 100%;
+      image-rendering: pixelated;
+      pointer-events: none;
+    }
+
+    .inventory-gold {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 14px;
+      padding: 8px 10px;
+      border: 1px solid #6a5a42;
+      border-radius: 6px;
+      background: rgba(20, 16, 12, 0.9);
+      color: #f3dd9a;
+      font-size: 14px;
+    }
+
+    @media (max-width: 760px) {
+      .inventory-body {
+        grid-template-columns: 1fr;
+      }
     }
 
     #info {
@@ -431,16 +546,22 @@
       <button type="button" data-window="help" aria-pressed="false">도움말</button>
       <button type="button" data-window="settings" aria-pressed="false">설정</button>
     </nav>
-    <section id="inventory" class="game-window" hidden aria-label="가방">
+    <section id="inventory" class="game-window inventory-window" hidden aria-label="가방">
       <div class="window-bar">
         <h2>가방</h2>
         <button type="button" data-close="inventory">닫기</button>
       </div>
-      <p id="inventory-empty">비어 있음</p>
-      <div id="inventory-item" hidden>
-        <canvas id="sword-icon" width="80" height="44" aria-hidden="true"></canvas>
-        <span>놋쇠검</span>
+      <div class="inventory-body">
+        <div>
+          <h3 class="equip-heading">장착</h3>
+          <div id="equip-panel" class="equip-panel" aria-label="아이템 장착"></div>
+        </div>
+        <div class="bag-panel" aria-label="가방 칸">
+          <h3>소지품</h3>
+          <div id="bag-grid"></div>
+        </div>
       </div>
+      <div class="inventory-gold">골드 <span id="inventory-gold">0</span></div>
     </section>
     <section id="skills" class="game-window" hidden aria-label="스킬">
       <div class="window-bar">
@@ -468,7 +589,7 @@
         <h2>도움말</h2>
         <button type="button" data-close="help">닫기</button>
       </div>
-      <p>좌클릭으로 이동한다. 층은 화면보다 넓고, 화면은 캐릭터를 따라간다. 벽과 빈 공간은 지나갈 수 없다. 고블린에게 다가가면 전투가 시작되고 기본 공격은 자동이다. 승리하면 확인 없이 우측 하단 메시지 창에 결과가 뜨고, 하단 중앙 경험치 막대가 오른다. 보물상자와 떨어진 검은 가까이 가서 커서가 손 모양일 때 더블클릭한다. 위층 계단은 층마다 다른 곳에 있고, 그 위에 도착하면 올라간다. 가방의 검은 더블클릭으로 장착한다.</p>
+      <p>좌클릭으로 이동한다. 층은 화면보다 넓고, 화면은 캐릭터를 따라간다. 벽과 빈 공간은 지나갈 수 없다. 고블린에게 다가가면 전투가 시작되고 기본 공격은 자동이다. 승리하면 확인 없이 우측 하단 메시지 창에 결과가 뜨고, 하단 중앙 경험치 막대가 오른다. 보물상자와 떨어진 검은 가까이 가서 커서가 손 모양일 때 더블클릭한다. 위층 계단은 층마다 다른 곳에 있고, 그 위에 도착하면 올라간다. 가방 창은 왼쪽이 장착, 오른쪽이 소지품 칸이다. 가방의 검을 더블클릭하면 장착하고, 장착 칸을 더블클릭하면 벗는다.</p>
     </section>
     <section id="settings" class="game-window" hidden aria-label="설정">
       <div class="window-bar">
@@ -505,7 +626,7 @@
     </section>
   </main>
 
-  <script type="module" src="src/game/main.js?v=21"></script>
+  <script type="module" src="src/game/main.js?v=22"></script>
 
 </body>
 </html>
