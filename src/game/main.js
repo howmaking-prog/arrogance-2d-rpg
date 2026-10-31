@@ -6,8 +6,8 @@ import { createDungeonLayout } from './dungeon/layout.js?v=19'
 import { drawTowerFloor } from './floor.js?v=18'
 import { createHud } from './hud.js?v=10'
 import { createFieldItems } from './items.js?v=10'
-import { createGoblinPack } from './monsterPack.js?v=19'
-import { createPlayer, toCanvasPoint } from './player.js?v=17'
+import { createGoblinPack } from './monsterPack.js?v=20'
+import { createPlayer, toCanvasPoint } from './player.js?v=20'
 import { drawStairs, stairAtPoint, stairsFromLayout } from './stairs.js?v=19'
 import { createStatProgression } from './stats/progression.js?v=10'
 import { createStatSheet } from './stats/statSheet.js?v=10'
@@ -262,10 +262,10 @@ const startGame = () => {
       const playerPoint = actor.getPosition()
       const monsterPoint = goblins.getActivePosition() || playerPoint
       const monsterSwing = state.swings.find((item) => item.who === 'monster')
-      goblins.draw(ctx, state.monsterFlash, monsterSwing, playerPoint)
+      goblins.draw(ctx, null, monsterSwing, playerPoint)
       if (actor.isReady()) {
         const playerSwing = state.swings.find((item) => item.who === 'player')
-        actor.draw(ctx, items.getEquippedWeapon(), state.playerFlash, playerSwing)
+        actor.draw(ctx, items.getEquippedWeapon(), null, playerSwing)
         combatView.drawFloats(ctx, state.floats.map((item) => ({
           ...item,
           x: item.target === 'monster' ? monsterPoint.x : playerPoint.x,

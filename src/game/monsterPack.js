@@ -1,4 +1,4 @@
-import { createGoblin } from './monster.js'
+import { createGoblin } from './monster.js?v=20'
 
 const distance = (from, to) => Math.hypot(from.x - to.x, from.y - to.y)
 

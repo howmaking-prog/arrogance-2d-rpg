@@ -105,11 +105,6 @@ const drawActor = (ctx, sprite, player, target, moving, weaponImage, flash, atta
   if (pose) {
     drawSlashArc(ctx, player.x, player.y, player.direction, attack.age, attack.life, attack.crit)
   }
-  if (!flash) {
-    return
-  }
-  ctx.fillStyle = flash === 'crit' ? 'rgba(255, 64, 48, 0.5)' : 'rgba(255, 255, 255, 0.55)'
-  ctx.fillRect(destX, destY, size, size)
 }
 
 // 캔버스 크기가 정해진 뒤 플레이어를 만든다.

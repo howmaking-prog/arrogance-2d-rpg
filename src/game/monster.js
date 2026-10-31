@@ -88,10 +88,6 @@ export const createGoblin = (canvas, position) => {
       if (pose) {
         drawSlashArc(ctx, goblin.x, goblin.y, facing, attack.age, attack.life, attack.crit)
       }
-      if (flash) {
-        ctx.fillStyle = flash === 'crit' ? 'rgba(255, 64, 48, 0.5)' : 'rgba(255, 255, 255, 0.55)'
-        ctx.fillRect(destX, destY, size, size)
-      }
     },
   }
 }
