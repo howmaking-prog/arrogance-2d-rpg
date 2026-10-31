@@ -1,7 +1,7 @@
 import { BRASS_SWORD_ATK } from './stats/constants.js'
-import { clearFromBag, createEmptyBag, findFreeSpot, placeOnBag } from './inventory/bagGrid.js?v=22'
-import { BRASS_SWORD } from './inventory/constants.js?v=22'
-import { createInventoryPanel } from './inventory/panel.js?v=22'
+import { clearFromBag, createEmptyBag, findFreeSpot, placeOnBag } from './inventory/bagGrid.js?v=23'
+import { BRASS_SWORD } from './inventory/constants.js?v=23'
+import { createInventoryPanel } from './inventory/panel.js?v=23'
 
 // 상자와 떨어진 아이템에 손을 뻗을 수 있는 거리. 좌표는 중심이다.
 const CHEST_WIDTH = 88
@@ -189,6 +189,7 @@ export const createFieldItems = (canvas, position) => {
         id,
         name: BRASS_SWORD.name,
         kind: BRASS_SWORD.kind,
+        rarity: BRASS_SWORD.rarity,
         width: BRASS_SWORD.width,
         height: BRASS_SWORD.height,
         x: spot.x,
@@ -318,6 +319,13 @@ export const createFieldItems = (canvas, position) => {
     } catch (error) {
       console.error('층 보물상자 복원 실패', error)
     }
+  }
+
+  const inventoryRoot = document.getElementById('inventory')
+  if (inventoryRoot instanceof HTMLElement) {
+    inventoryRoot.addEventListener('inventory-filter', () => {
+      refreshPanel()
+    })
   }
 
   refreshPanel()

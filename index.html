@@ -134,43 +134,77 @@
     }
 
     #inventory.inventory-window {
-      width: min(720px, calc(100% - 24px));
-      max-height: calc(100% - 96px);
+      width: min(860px, calc(100% - 24px));
+      max-height: calc(100% - 88px);
       overflow: auto;
-      border-color: #8a7348;
+      border: 2px solid #c9a45a;
+      border-radius: 14px;
       background:
-        linear-gradient(180deg, rgba(28, 22, 16, 0.96), rgba(14, 11, 9, 0.96));
+        radial-gradient(circle at 30% 20%, rgba(48, 62, 96, 0.35), transparent 45%),
+        linear-gradient(180deg, rgba(18, 22, 34, 0.97), rgba(10, 12, 18, 0.98));
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
     }
 
     .inventory-body {
       display: grid;
-      grid-template-columns: minmax(220px, 0.95fr) minmax(280px, 1.15fr);
-      gap: 16px;
-      align-items: start;
+      grid-template-columns: minmax(280px, 1fr) minmax(300px, 1.05fr);
+      gap: 18px;
+      align-items: stretch;
     }
 
-    .equip-panel {
-      position: relative;
+    .equip-stage {
       display: grid;
-      grid-template-columns: 56px 56px 56px 56px 56px;
-      grid-template-rows: 56px 56px 88px 56px 56px;
+      grid-template-columns: 64px 1fr 64px;
+      gap: 10px;
+      align-items: center;
+      min-height: 360px;
+      padding: 14px 12px 10px;
+      border: 1px solid rgba(201, 164, 90, 0.45);
+      border-radius: 12px;
+      background:
+        radial-gradient(circle at 50% 70%, rgba(70, 90, 140, 0.28), transparent 55%),
+        rgba(8, 10, 16, 0.8);
+    }
+
+    .equip-col {
+      display: grid;
+      gap: 10px;
+      justify-items: center;
+    }
+
+    .equip-hero {
+      display: grid;
+      justify-items: center;
       gap: 8px;
-      justify-content: center;
-      padding: 12px;
-      border: 2px solid #6a5a42;
-      border-radius: 8px;
-      background: rgba(8, 6, 5, 0.72);
+    }
+
+    #equip-hero-canvas {
+      width: 160px;
+      height: 220px;
+      image-rendering: pixelated;
+    }
+
+    .equip-crest {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      border: 2px solid #c9a45a;
+      background:
+        radial-gradient(circle at 40% 35%, #8ec7ff, #3a5ea8 55%, #1a2748 100%);
+      box-shadow: 0 0 16px rgba(90, 140, 220, 0.45);
     }
 
     .equip-slot {
       position: relative;
       display: grid;
       place-items: center;
+      width: 56px;
+      height: 56px;
       margin: 0;
       padding: 4px;
-      border: 1px solid #5a4a34;
-      border-radius: 4px;
-      background: rgba(24, 18, 12, 0.95);
+      border: 1px solid #6d5a3a;
+      border-radius: 8px;
+      background: rgba(16, 18, 28, 0.95);
       color: var(--muted);
       cursor: pointer;
     }
@@ -184,9 +218,9 @@
       position: absolute;
       left: 3px;
       top: 2px;
-      font-size: 10px;
+      font-size: 9px;
       line-height: 1;
-      opacity: 0.75;
+      opacity: 0.7;
       pointer-events: none;
     }
 
@@ -195,39 +229,45 @@
       pointer-events: none;
     }
 
-    .equip-head { grid-column: 3; grid-row: 1; }
-    .equip-amulet { grid-column: 4; grid-row: 2; width: 44px; height: 44px; justify-self: center; }
-    .equip-weapon { grid-column: 1 / span 2; grid-row: 2 / span 2; min-height: 150px; }
-    .equip-torso { grid-column: 3; grid-row: 2 / span 2; min-height: 150px; }
-    .equip-offhand { grid-column: 4 / span 2; grid-row: 2 / span 2; min-height: 150px; }
-    .equip-gloves { grid-column: 1; grid-row: 4; }
-    .equip-belt { grid-column: 2 / span 3; grid-row: 4; }
-    .equip-boots { grid-column: 5; grid-row: 4; }
-    .equip-ring1 { grid-column: 2; grid-row: 5; width: 44px; height: 44px; justify-self: end; }
-    .equip-ring2 { grid-column: 4; grid-row: 5; width: 44px; height: 44px; justify-self: start; }
-
     .bag-panel {
+      display: grid;
+      gap: 10px;
       padding: 12px;
-      border: 2px solid #6a5a42;
-      border-radius: 8px;
-      background: rgba(8, 6, 5, 0.72);
+      border: 1px solid rgba(201, 164, 90, 0.45);
+      border-radius: 12px;
+      background: rgba(8, 10, 16, 0.8);
     }
 
-    .bag-panel h3,
-    .equip-heading {
-      margin: 0 0 10px;
-      font-size: 14px;
+    #bag-filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .bag-filter {
+      border: 1px solid #6a5a42;
+      border-radius: 8px;
+      background: rgba(20, 22, 32, 0.95);
+      color: var(--muted);
+      font: inherit;
+      font-size: 12px;
+      padding: 6px 8px;
+      cursor: pointer;
+    }
+
+    .bag-filter[aria-pressed="true"] {
+      border-color: #e6c36a;
       color: #f3dd9a;
-      letter-spacing: 0.04em;
     }
 
     #bag-grid {
       position: relative;
       display: grid;
-      grid-template-columns: repeat(var(--bag-cols, 10), var(--bag-cell, 28px));
-      grid-template-rows: repeat(var(--bag-rows, 4), var(--bag-cell, 28px));
-      width: calc(var(--bag-cols, 10) * var(--bag-cell, 28px));
-      height: calc(var(--bag-rows, 4) * var(--bag-cell, 28px));
+      grid-template-columns: repeat(var(--bag-cols, 5), var(--bag-cell, 52px));
+      grid-template-rows: repeat(var(--bag-rows, 6), var(--bag-cell, 52px));
+      width: calc(var(--bag-cols, 5) * var(--bag-cell, 52px));
+      height: calc(var(--bag-rows, 6) * var(--bag-cell, 52px));
+      margin: 0 auto;
       border: 1px solid #3a3228;
       background: #0a0806;
     }
@@ -250,10 +290,16 @@
       place-items: center;
       margin: 0;
       padding: 0;
-      border: 1px solid #7a6238;
-      background: rgba(72, 42, 96, 0.55);
+      border: 1px solid #5a4a34;
+      border-radius: 6px;
+      background: rgba(28, 24, 36, 0.92);
       cursor: pointer;
       pointer-events: auto;
+    }
+
+    .bag-item.rarity-rare {
+      border-color: #5a8ad4;
+      box-shadow: inset 0 0 0 1px rgba(90, 138, 212, 0.35);
     }
 
     .bag-item canvas {
@@ -263,11 +309,38 @@
       pointer-events: none;
     }
 
+    .inventory-footer {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 12px;
+      align-items: center;
+      margin-top: 14px;
+    }
+
+    .inventory-potions,
+    #inventory-quick-skills {
+      display: flex;
+      gap: 8px;
+    }
+
+    .inventory-potion,
+    .quick-skill {
+      width: 44px;
+      height: 44px;
+      display: grid;
+      place-items: center;
+      border: 1px solid #6a5a42;
+      border-radius: 8px;
+      background: rgba(16, 18, 28, 0.95);
+      color: #cbbba6;
+      font-size: 11px;
+    }
+
     .inventory-gold {
       display: flex;
       align-items: center;
+      justify-content: flex-end;
       gap: 8px;
-      margin-top: 14px;
       padding: 8px 10px;
       border: 1px solid #6a5a42;
       border-radius: 6px;
@@ -276,7 +349,7 @@
       font-size: 14px;
     }
 
-    @media (max-width: 760px) {
+    @media (max-width: 860px) {
       .inventory-body {
         grid-template-columns: 1fr;
       }
@@ -402,7 +475,7 @@
       right: 16px;
       bottom: 100px;
       z-index: 5;
-      width: min(300px, 42vw);
+      width: min(280px, 38vw);
       max-height: 168px;
       padding: 10px 12px;
       overflow: hidden;
@@ -438,28 +511,41 @@
       color: #f3dd9a;
     }
 
-    #combat {
+    #combat-monster {
       position: absolute;
-      left: 16px;
-      right: 16px;
-      bottom: 100px;
+      top: 56px;
+      left: 50%;
       z-index: 4;
-      display: flex;
-      justify-content: space-between;
-      gap: 16px;
+      width: min(360px, calc(100% - 32px));
+      transform: translateX(-50%);
       pointer-events: none;
     }
 
+    #combat-monster[hidden],
     #combat[hidden] {
       display: none;
     }
 
-    .combat-card {
+    #combat {
+      position: absolute;
+      left: 16px;
+      bottom: 100px;
+      z-index: 4;
       width: min(320px, 46vw);
+      pointer-events: none;
+    }
+
+    .combat-card {
+      width: 100%;
       padding: 10px 12px;
       background: rgba(18, 15, 12, 0.92);
       border: 2px solid #6a5a42;
       color: var(--ink);
+    }
+
+    #combat-monster .combat-card {
+      border-color: #a45a4a;
+      background: rgba(28, 14, 12, 0.92);
     }
 
     .combat-card p {
@@ -552,23 +638,36 @@
         <button type="button" data-close="inventory">닫기</button>
       </div>
       <div class="inventory-body">
-        <div>
-          <h3 class="equip-heading">장착</h3>
-          <div id="equip-panel" class="equip-panel" aria-label="아이템 장착"></div>
+        <div class="equip-stage" aria-label="아이템 장착">
+          <div id="equip-left" class="equip-col"></div>
+          <div class="equip-hero">
+            <canvas id="equip-hero-canvas" width="160" height="220" aria-hidden="true"></canvas>
+            <div class="equip-crest" aria-hidden="true"></div>
+          </div>
+          <div id="equip-right" class="equip-col"></div>
         </div>
         <div class="bag-panel" aria-label="가방 칸">
-          <h3>소지품</h3>
+          <div id="bag-filters"></div>
           <div id="bag-grid"></div>
         </div>
       </div>
-      <div class="inventory-gold">골드 <span id="inventory-gold">0</span></div>
+      <div class="inventory-footer">
+        <div class="inventory-potions" aria-label="포션 단축칸">
+          <div class="inventory-potion" title="체력 포션 칸">HP</div>
+          <div class="inventory-potion" title="마나 포션 칸">MP</div>
+          <div class="inventory-potion" title="빈 포션 칸">·</div>
+          <div class="inventory-potion" title="빈 포션 칸">·</div>
+        </div>
+        <div id="inventory-quick-skills" aria-label="스킬 단축칸"></div>
+        <div class="inventory-gold">골드 <span id="inventory-gold">0</span></div>
+      </div>
     </section>
     <section id="skills" class="game-window" hidden aria-label="스킬">
       <div class="window-bar">
         <h2>스킬</h2>
         <button type="button" data-close="skills">닫기</button>
       </div>
-      <p>강타는 마나 15로 공격력의 2배, 일격은 마나 30으로 공격력의 3배다. 고블린과 싸우는 중에 쓸 수 있다.</p>
+      <p>오만의 탑 파괴 계열을 실시간 전투에 맞춘 스킬이다. 강타는 마나 15로 공격력의 2배, 일격은 마나 30으로 공격력의 3배다. 고블린과 싸우는 중 전투 창 버튼으로 쓴다.</p>
     </section>
     <section id="info" class="game-window" hidden aria-label="정보">
       <div class="window-bar">
@@ -606,16 +705,18 @@
       <div class="meter exp"><span id="exp-fill"></span></div>
       <span id="exp-text">0 / 100</span>
     </div>
+    <section id="combat-monster" hidden aria-label="몬스터 체력">
+      <div class="combat-card">
+        <p id="combat-monster-label">몬스터</p>
+        <div class="meter hp"><span id="combat-monster-hp"></span></div>
+      </div>
+    </section>
     <section id="combat" hidden aria-label="전투">
       <div class="combat-card">
         <p id="combat-player-label">HP</p>
         <div class="meter hp"><span id="combat-player-hp"></span></div>
         <div class="meter mp"><span id="combat-player-mp"></span></div>
         <div id="combat-skill-list"></div>
-      </div>
-      <div class="combat-card">
-        <p id="combat-monster-label">몬스터</p>
-        <div class="meter hp"><span id="combat-monster-hp"></span></div>
       </div>
     </section>
     <section id="combat-result" hidden aria-label="전투 결과">
@@ -626,7 +727,7 @@
     </section>
   </main>
 
-  <script type="module" src="src/game/main.js?v=22"></script>
+  <script type="module" src="src/game/main.js?v=23"></script>
 
 </body>
 </html>

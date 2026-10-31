@@ -1,36 +1,71 @@
-import { BAG_CELL_SIZE, BAG_COLUMNS, BAG_ROWS, EQUIP_SLOTS } from './constants.js'
+import { BAG_CELL_SIZE, BAG_COLUMNS, BAG_FILTERS, BAG_ROWS, EQUIP_LEFT, EQUIP_RIGHT } from './constants.js'
 
-// 디아블로 2처럼 왼쪽 장착, 오른쪽 가방 칸을 그린다.
+const HERO_URL = 'src/character/player.png?v=5'
+const HERO_FRAME = 64
+const HERO_ROW = 10
+
+// 첨부 화면처럼 가운데 캐릭터, 양옆 장착, 오른쪽 필터+가방 칸을 그린다.
 export const createInventoryPanel = ({ onBagActivate, onEquipActivate }) => {
   const root = document.getElementById('inventory')
-  const equipRoot = document.getElementById('equip-panel')
+  const leftRoot = document.getElementById('equip-left')
+  const rightRoot = document.getElementById('equip-right')
+  const heroCanvas = document.getElementById('equip-hero-canvas')
   const bagRoot = document.getElementById('bag-grid')
+  const filterRoot = document.getElementById('bag-filters')
   const goldLabel = document.getElementById('inventory-gold')
+  const quickSkills = document.getElementById('inventory-quick-skills')
+  let filter = 'all'
+  let heroImage = null
 
   const ensureDom = () => {
-    if (!(root instanceof HTMLElement) || !(equipRoot instanceof HTMLElement) || !(bagRoot instanceof HTMLElement)) {
+    if (
+      !(root instanceof HTMLElement)
+      || !(leftRoot instanceof HTMLElement)
+      || !(rightRoot instanceof HTMLElement)
+      || !(bagRoot instanceof HTMLElement)
+    ) {
       throw new Error('가방 창 요소를 찾을 수 없습니다.')
     }
   }
 
+  const makeSlot = (slot) => {
+    const button = document.createElement('button')
+    button.type = 'button'
+    button.className = `equip-slot equip-${slot.id}`
+    button.dataset.slot = slot.id
+    button.setAttribute('aria-label', slot.label)
+    const label = document.createElement('span')
+    label.className = 'equip-slot-label'
+    label.textContent = slot.label
+    const canvas = document.createElement('canvas')
+    canvas.width = 44
+    canvas.height = 44
+    canvas.className = 'equip-slot-icon'
+    canvas.setAttribute('aria-hidden', 'true')
+    button.append(label, canvas)
+    return button
+  }
+
   const buildEquip = () => {
-    equipRoot.replaceChildren()
-    EQUIP_SLOTS.forEach((slot) => {
+    leftRoot.replaceChildren()
+    rightRoot.replaceChildren()
+    EQUIP_LEFT.forEach((slot) => leftRoot.appendChild(makeSlot(slot)))
+    EQUIP_RIGHT.forEach((slot) => rightRoot.appendChild(makeSlot(slot)))
+  }
+
+  const buildFilters = () => {
+    if (!(filterRoot instanceof HTMLElement)) {
+      return
+    }
+    filterRoot.replaceChildren()
+    BAG_FILTERS.forEach((entry) => {
       const button = document.createElement('button')
       button.type = 'button'
-      button.className = `equip-slot equip-${slot.id}`
-      button.dataset.slot = slot.id
-      button.setAttribute('aria-label', slot.label)
-      const label = document.createElement('span')
-      label.className = 'equip-slot-label'
-      label.textContent = slot.label
-      const canvas = document.createElement('canvas')
-      canvas.width = slot.id === 'weapon' || slot.id === 'offhand' || slot.id === 'torso' ? 44 : 36
-      canvas.height = slot.id === 'weapon' || slot.id === 'offhand' || slot.id === 'torso' ? 72 : 36
-      canvas.className = 'equip-slot-icon'
-      canvas.setAttribute('aria-hidden', 'true')
-      button.append(label, canvas)
-      equipRoot.appendChild(button)
+      button.className = 'bag-filter'
+      button.dataset.filter = entry.id
+      button.textContent = entry.label
+      button.setAttribute('aria-pressed', entry.id === filter ? 'true' : 'false')
+      filterRoot.appendChild(button)
     })
   }
 
@@ -42,7 +77,6 @@ export const createInventoryPanel = ({ onBagActivate, onEquipActivate }) => {
     for (let index = 0; index < BAG_COLUMNS * BAG_ROWS; index += 1) {
       const cell = document.createElement('div')
       cell.className = 'bag-cell'
-      cell.dataset.index = String(index)
       bagRoot.appendChild(cell)
     }
     const layer = document.createElement('div')
@@ -51,10 +85,110 @@ export const createInventoryPanel = ({ onBagActivate, onEquipActivate }) => {
     bagRoot.appendChild(layer)
   }
 
+  const buildQuickSkills = () => {
+    if (!(quickSkills instanceof HTMLElement)) {
+      return
+    }
+    quickSkills.replaceChildren()
+    ;[
+      { id: 'power-strike', name: '강타' },
+      { id: 'heavy-strike', name: '일격' },
+      { id: 'empty-a', name: '' },
+      { id: 'empty-b', name: '' },
+    ].forEach((skill) => {
+      const slot = document.createElement('div')
+      slot.className = 'quick-skill'
+      slot.textContent = skill.name || '·'
+      slot.title = skill.name ? `${skill.name} 스킬` : '빈 스킬 칸'
+      quickSkills.appendChild(slot)
+    })
+  }
+
+  const drawHero = () => {
+    if (!(heroCanvas instanceof HTMLCanvasElement) || !heroImage) {
+      return
+    }
+    const ctx = heroCanvas.getContext('2d')
+    if (!ctx) {
+      return
+    }
+    ctx.clearRect(0, 0, heroCanvas.width, heroCanvas.height)
+    ctx.imageSmoothingEnabled = false
+    const scale = 2.2
+    const size = HERO_FRAME * scale
+    ctx.drawImage(
+      heroImage,
+      0,
+      HERO_ROW * HERO_FRAME,
+      HERO_FRAME,
+      HERO_FRAME,
+      (heroCanvas.width - size) / 2,
+      (heroCanvas.height - size) / 2 + 8,
+      size,
+      size,
+    )
+  }
+
+  const drawIcon = (canvas, image, source) => {
+    if (!(canvas instanceof HTMLCanvasElement) || !image || !source) {
+      return
+    }
+    const ctx = canvas.getContext('2d')
+    if (!ctx) {
+      return
+    }
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    ctx.imageSmoothingEnabled = false
+    const scale = Math.min(canvas.width / source.width, canvas.height / source.height) * 0.85
+    const width = source.width * scale
+    const height = source.height * scale
+    ctx.drawImage(
+      image,
+      source.x,
+      source.y,
+      source.width,
+      source.height,
+      (canvas.width - width) / 2,
+      (canvas.height - height) / 2,
+      width,
+      height,
+    )
+  }
+
   try {
     ensureDom()
     buildEquip()
+    buildFilters()
     buildBag()
+    buildQuickSkills()
+    heroImage = new Image()
+    heroImage.addEventListener('load', () => {
+      drawHero()
+    })
+    heroImage.addEventListener('error', () => {
+      console.error('장착 창 캐릭터 이미지 로드 실패', HERO_URL)
+    })
+    heroImage.src = HERO_URL
+
+    filterRoot?.addEventListener('click', (event) => {
+      try {
+        if (!(event.target instanceof Element)) {
+          return
+        }
+        const button = event.target.closest('[data-filter]')
+        if (!(button instanceof HTMLElement) || !button.dataset.filter) {
+          return
+        }
+        filter = button.dataset.filter
+        filterRoot.querySelectorAll('[data-filter]').forEach((node) => {
+          node.setAttribute('aria-pressed', node.dataset.filter === filter ? 'true' : 'false')
+        })
+        root.dispatchEvent(new CustomEvent('inventory-filter', { detail: { filter } }))
+      } catch (error) {
+        console.error('가방 필터 실패', error)
+      }
+    })
+
     root.addEventListener('click', (event) => {
       try {
         if (event.detail !== 2 || !(event.target instanceof Element)) {
@@ -79,33 +213,8 @@ export const createInventoryPanel = ({ onBagActivate, onEquipActivate }) => {
     console.error('가방 창 준비 실패', error)
   }
 
-  const drawIcon = (canvas, image, source) => {
-    if (!(canvas instanceof HTMLCanvasElement) || !image || !source) {
-      return
-    }
-    const ctx = canvas.getContext('2d')
-    if (!ctx) {
-      return
-    }
-    ctx.clearRect(0, 0, canvas.width, canvas.height)
-    ctx.imageSmoothingEnabled = false
-    const scale = Math.min(canvas.width / source.width, canvas.height / source.height)
-    const width = source.width * scale
-    const height = source.height * scale
-    ctx.drawImage(
-      image,
-      source.x,
-      source.y,
-      source.width,
-      source.height,
-      (canvas.width - width) / 2,
-      (canvas.height - height) / 2,
-      width,
-      height,
-    )
-  }
-
   return {
+    getFilter: () => filter,
     setGold: (amount) => {
       if (goldLabel instanceof HTMLElement) {
         goldLabel.textContent = String(Math.max(0, Math.floor(Number(amount) || 0)))
@@ -114,8 +223,9 @@ export const createInventoryPanel = ({ onBagActivate, onEquipActivate }) => {
     render: ({ bagItems, equipment, swordImage, swordSource }) => {
       try {
         ensureDom()
-        EQUIP_SLOTS.forEach((slot) => {
-          const button = equipRoot.querySelector(`[data-slot="${slot.id}"]`)
+        drawHero()
+        ;[...EQUIP_LEFT, ...EQUIP_RIGHT].forEach((slot) => {
+          const button = root.querySelector(`[data-slot="${slot.id}"]`)
           if (!(button instanceof HTMLElement)) {
             return
           }
@@ -140,9 +250,12 @@ export const createInventoryPanel = ({ onBagActivate, onEquipActivate }) => {
         }
         layer.replaceChildren()
         bagItems.forEach((item) => {
+          if (filter !== 'all' && item.kind !== filter) {
+            return
+          }
           const tile = document.createElement('button')
           tile.type = 'button'
-          tile.className = 'bag-item'
+          tile.className = `bag-item rarity-${item.rarity || 'common'}`
           tile.dataset.bagId = item.id
           tile.style.left = `${item.x * BAG_CELL_SIZE}px`
           tile.style.top = `${item.y * BAG_CELL_SIZE}px`
@@ -150,8 +263,8 @@ export const createInventoryPanel = ({ onBagActivate, onEquipActivate }) => {
           tile.style.height = `${item.height * BAG_CELL_SIZE}px`
           tile.title = `${item.name} · 더블클릭하면 장착`
           const canvas = document.createElement('canvas')
-          canvas.width = item.width * BAG_CELL_SIZE
-          canvas.height = item.height * BAG_CELL_SIZE
+          canvas.width = BAG_CELL_SIZE
+          canvas.height = BAG_CELL_SIZE
           canvas.setAttribute('aria-hidden', 'true')
           tile.appendChild(canvas)
           if (item.name === '놋쇠검') {

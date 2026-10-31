@@ -1,11 +1,12 @@
 import { createCombatManager } from './combat/combat.js?v=17'
-import { createCombatView } from './combat/combatView.js?v=21'
+import { createCombatView } from './combat/combatView.js?v=23'
 import { createGoblinProfile } from './combat/monsterStats.js?v=15'
 import { createHitSounds } from './combat/sfx.js?v=17'
+import { skillById, skillHitMessage } from './combat/skills.js?v=23'
 import { createDungeonLayout } from './dungeon/layout.js?v=19'
 import { drawTowerFloor } from './floor.js?v=18'
 import { createHud } from './hud.js?v=10'
-import { createFieldItems } from './items.js?v=22'
+import { createFieldItems } from './items.js?v=23'
 import { createGoblinPack } from './monsterPack.js?v=20'
 import { createPlayer, toCanvasPoint } from './player.js?v=20'
 import { drawStairs, stairAtPoint, stairsFromLayout } from './stairs.js?v=19'
@@ -251,6 +252,8 @@ const startGame = () => {
         if (!cast.ok && cast.reason) {
           messages.push(cast.reason)
           console.log(`[상태] ${cast.reason}`)
+        } else if (cast.ok) {
+          messages.push(skillHitMessage(skillById(skillId), cast.damage, cast.crit))
         }
         applyCombatResult(combat.takeResult())
       },

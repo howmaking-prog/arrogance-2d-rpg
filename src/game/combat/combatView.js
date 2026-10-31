@@ -13,6 +13,7 @@ const barWidth = (shown, max) => {
 // 체력과 마나 막대, 스킬 버튼, 패배 창만 필드 위에 올린다. 승리는 메시지 창으로 보낸다.
 export const createCombatView = ({ onSkill, onRestart }) => {
   const root = document.getElementById('combat')
+  const monsterRoot = document.getElementById('combat-monster')
   const result = document.getElementById('combat-result')
   const playerHp = document.getElementById('combat-player-hp')
   const playerMp = document.getElementById('combat-player-mp')
@@ -69,6 +70,9 @@ export const createCombatView = ({ onSkill, onRestart }) => {
   const setOpen = (open) => {
     if (root instanceof HTMLElement) {
       root.hidden = !open
+    }
+    if (monsterRoot instanceof HTMLElement) {
+      monsterRoot.hidden = !open
     }
   }
 
