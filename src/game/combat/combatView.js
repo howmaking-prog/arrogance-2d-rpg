@@ -10,8 +10,8 @@ const barWidth = (shown, max) => {
   return `${Math.max(0, Math.min(100, (shown / max) * 100))}%`
 }
 
-// 체력과 마나 막대, 스킬 버튼, 승리와 패배 창을 필드 위에 올린다.
-export const createCombatView = ({ onSkill, onNextFloor, onRestart }) => {
+// 체력과 마나 막대, 스킬 버튼, 패배 창만 필드 위에 올린다. 승리는 메시지 창으로 보낸다.
+export const createCombatView = ({ onSkill, onRestart }) => {
   const root = document.getElementById('combat')
   const result = document.getElementById('combat-result')
   const playerHp = document.getElementById('combat-player-hp')
@@ -52,13 +52,9 @@ export const createCombatView = ({ onSkill, onNextFloor, onRestart }) => {
         console.error('전투 스킬 처리 실패', error)
       }
     })
-    nextButton?.addEventListener('click', () => {
-      try {
-        onNextFloor()
-      } catch (error) {
-        console.error('다음 층 이동 실패', error)
-      }
-    })
+    if (nextButton instanceof HTMLElement) {
+      nextButton.hidden = true
+    }
     restartButton?.addEventListener('click', () => {
       try {
         onRestart()
@@ -82,21 +78,6 @@ export const createCombatView = ({ onSkill, onNextFloor, onRestart }) => {
       if (result instanceof HTMLElement) {
         result.hidden = true
       }
-    },
-    showVictory: (reward) => {
-      if (!(result instanceof HTMLElement) || !(title instanceof HTMLElement) || !(body instanceof HTMLElement)) {
-        return
-      }
-      title.textContent = '승리'
-      body.textContent = `경험치 ${reward.exp}, 골드 ${reward.gold}을 얻었다. 이 층에 남는다.`
-      if (nextButton instanceof HTMLElement) {
-        nextButton.hidden = false
-        nextButton.textContent = '확인'
-      }
-      if (restartButton instanceof HTMLElement) {
-        restartButton.hidden = true
-      }
-      result.hidden = false
     },
     showDefeat: () => {
       if (!(result instanceof HTMLElement) || !(title instanceof HTMLElement) || !(body instanceof HTMLElement)) {

@@ -1,5 +1,5 @@
 import { createCombatManager } from './combat/combat.js?v=17'
-import { createCombatView } from './combat/combatView.js?v=17'
+import { createCombatView } from './combat/combatView.js?v=21'
 import { createGoblinProfile } from './combat/monsterStats.js?v=15'
 import { createHitSounds } from './combat/sfx.js?v=17'
 import { createDungeonLayout } from './dungeon/layout.js?v=19'
@@ -11,6 +11,8 @@ import { createPlayer, toCanvasPoint } from './player.js?v=20'
 import { drawStairs, stairAtPoint, stairsFromLayout } from './stairs.js?v=19'
 import { createStatProgression } from './stats/progression.js?v=10'
 import { createStatSheet } from './stats/statSheet.js?v=10'
+import { createExpBar } from './ui/expBar.js?v=21'
+import { createMessageLog } from './ui/messageLog.js?v=21'
 
 const CLICK_DELAY = 220
 const ENGAGE_DISTANCE = 120
@@ -65,8 +67,12 @@ const startGame = () => {
     bindWorld()
     actor.placeAt(layout.playerStart)
     createHud()
+    const messages = createMessageLog()
+    const expBar = createExpBar()
     const items = createFieldItems(canvas, layout.chest)
     const goblins = createGoblinPack(canvas, layout.monsters)
+    messages.push('오만의 탑에 들어왔다.')
+    expBar.setExp(0)
     const progression = createStatProgression()
     const statSheet = createStatSheet(progression, () => ({
       weaponAtk: items.getEquippedAttack(),
@@ -205,6 +211,21 @@ const startGame = () => {
       showFloor()
     }
 
+    const finishVictory = (reward) => {
+      wallet.exp += reward.exp
+      wallet.gold += reward.gold
+      messages.push(`승리! 경험치 +${reward.exp}, 골드 +${reward.gold}`)
+      expBar.setExp(wallet.exp)
+      combatView.hideResult()
+      combatView.setOpen(false)
+      vitals = combat.end()
+      goblins.defeatActive()
+      if (stairAtPoint(currentStairs(), actor.getPosition())) {
+        holdStairs = true
+      }
+      console.log(`[상태] 승리 | 경험치 ${wallet.exp} | 골드 ${wallet.gold} | 남은 몬스터 ${goblins.aliveCount()}`)
+    }
+
     const applyCombatResult = (result) => {
       if (!result) {
         return
@@ -212,16 +233,11 @@ const startGame = () => {
       const state = combat.getSnapshot()
       vitals = state.player ? { hp: state.player.hp, mp: state.player.mp } : vitals
       if (result.result === 'victory' && result.reward) {
-        wallet.exp += result.reward.exp
-        wallet.gold += result.reward.gold
-        console.log(`[상태] 승리 | 경험치 ${wallet.exp} | 골드 ${wallet.gold}`)
-        combatView.showVictory({
-          exp: result.reward.exp,
-          gold: result.reward.gold,
-        })
+        finishVictory(result.reward)
         return
       }
       if (result.result === 'defeat') {
+        messages.push('패배했다.')
         console.log('[상태] 패배')
         combatView.showDefeat()
       }
@@ -231,18 +247,10 @@ const startGame = () => {
       onSkill: (skillId) => {
         const cast = combat.useSkill(skillId)
         if (!cast.ok && cast.reason) {
+          messages.push(cast.reason)
           console.log(`[상태] ${cast.reason}`)
         }
         applyCombatResult(combat.takeResult())
-      },
-      onNextFloor: () => {
-        combatView.hideResult()
-        combatView.setOpen(false)
-        vitals = combat.end()
-        goblins.defeatActive()
-        if (stairAtPoint(currentStairs(), actor.getPosition())) {
-          holdStairs = true
-        }
       },
       onRestart: () => {
         window.location.reload()
@@ -357,6 +365,7 @@ const startGame = () => {
             combatView.resetBars(started)
             combatView.hideResult()
             combatView.setOpen(true)
+            messages.push(`${started.monster.name}과 전투!`)
             console.log(`[상태] 전투 시작 | ${started.monster.name} | 남은 ${goblins.aliveCount()}마리`)
           }
         } else if (combat.isFighting()) {
@@ -373,6 +382,7 @@ const startGame = () => {
         } else {
           combatView.sync(dt, combat.getSnapshot())
         }
+        expBar.sync(dt)
         refreshCursor()
         draw()
       } catch (error) {

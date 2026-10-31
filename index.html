@@ -244,11 +244,90 @@
       image-rendering: pixelated;
     }
 
+    #exp-bar {
+      position: absolute;
+      left: 50%;
+      bottom: 58px;
+      z-index: 4;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 10px;
+      width: min(420px, calc(100% - 32px));
+      padding: 8px 12px;
+      transform: translateX(-50%);
+      border: 2px solid #6a5a42;
+      border-radius: 8px;
+      background: rgba(18, 15, 12, 0.82);
+      pointer-events: none;
+    }
+
+    #exp-bar[hidden] {
+      display: none;
+    }
+
+    #exp-label,
+    #exp-text {
+      font-size: 13px;
+      color: #f3dd9a;
+      white-space: nowrap;
+    }
+
+    .meter.exp {
+      height: 12px;
+      margin-top: 0;
+    }
+
+    .meter.exp span {
+      background: linear-gradient(90deg, #7a5a18, #e6c36a);
+    }
+
+    #message-log {
+      position: absolute;
+      right: 16px;
+      bottom: 100px;
+      z-index: 5;
+      width: min(300px, 42vw);
+      max-height: 168px;
+      padding: 10px 12px;
+      overflow: hidden;
+      border: 1px solid rgba(230, 195, 106, 0.45);
+      border-radius: 8px;
+      background: rgba(12, 10, 8, 0.55);
+      backdrop-filter: blur(2px);
+      pointer-events: none;
+    }
+
+    #message-log[hidden] {
+      display: none;
+    }
+
+    #message-log-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      max-height: 148px;
+      overflow: hidden;
+    }
+
+    #message-log-list li {
+      margin: 0 0 6px;
+      color: #f0e6d4;
+      font-size: 13px;
+      line-height: 1.35;
+      text-shadow: 0 1px 2px #000;
+    }
+
+    #message-log-list li:last-child {
+      margin-bottom: 0;
+      color: #f3dd9a;
+    }
+
     #combat {
       position: absolute;
       left: 16px;
       right: 16px;
-      bottom: 72px;
+      bottom: 100px;
       z-index: 4;
       display: flex;
       justify-content: space-between;
@@ -389,7 +468,7 @@
         <h2>도움말</h2>
         <button type="button" data-close="help">닫기</button>
       </div>
-      <p>좌클릭으로 이동한다. 층은 화면보다 넓고, 화면은 캐릭터를 따라간다. 벽과 빈 공간은 지나갈 수 없다. 고블린에게 다가가면 전투가 시작되고 기본 공격은 자동이다. 몬스터를 쓰러뜨려도 그 층에 남는다. 보물상자와 떨어진 검은 가까이 가서 커서가 손 모양일 때 더블클릭한다. 위층 계단은 층마다 다른 곳에 있고, 그 위에 도착하면 올라간다. 가방의 검은 더블클릭으로 장착한다.</p>
+      <p>좌클릭으로 이동한다. 층은 화면보다 넓고, 화면은 캐릭터를 따라간다. 벽과 빈 공간은 지나갈 수 없다. 고블린에게 다가가면 전투가 시작되고 기본 공격은 자동이다. 승리하면 확인 없이 우측 하단 메시지 창에 결과가 뜨고, 하단 중앙 경험치 막대가 오른다. 보물상자와 떨어진 검은 가까이 가서 커서가 손 모양일 때 더블클릭한다. 위층 계단은 층마다 다른 곳에 있고, 그 위에 도착하면 올라간다. 가방의 검은 더블클릭으로 장착한다.</p>
     </section>
     <section id="settings" class="game-window" hidden aria-label="설정">
       <div class="window-bar">
@@ -398,6 +477,14 @@
       </div>
       <p>변경할 설정이 없습니다.</p>
     </section>
+    <aside id="message-log" aria-label="메시지">
+      <ul id="message-log-list"></ul>
+    </aside>
+    <div id="exp-bar" aria-label="경험치">
+      <span id="exp-label">Lv 1</span>
+      <div class="meter exp"><span id="exp-fill"></span></div>
+      <span id="exp-text">0 / 100</span>
+    </div>
     <section id="combat" hidden aria-label="전투">
       <div class="combat-card">
         <p id="combat-player-label">HP</p>
@@ -411,14 +498,14 @@
       </div>
     </section>
     <section id="combat-result" hidden aria-label="전투 결과">
-      <h2 id="combat-result-title">승리</h2>
+      <h2 id="combat-result-title">패배</h2>
       <p id="combat-result-body"></p>
-      <button type="button" id="combat-next">확인</button>
+      <button type="button" id="combat-next" hidden>확인</button>
       <button type="button" id="combat-restart" hidden>다시 시작</button>
     </section>
   </main>
 
-  <script type="module" src="src/game/main.js?v=20"></script>
+  <script type="module" src="src/game/main.js?v=21"></script>
 
 </body>
 </html>
